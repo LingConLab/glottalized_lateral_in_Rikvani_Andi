@@ -1,0 +1,211 @@
+File type = "ooTextFile"
+Object class = "TextGrid"
+
+xmin = 0 
+xmax = 0.5452433680227067 
+tiers? <exists> 
+size = 5 
+item []: 
+    item [1]:
+        class = "IntervalTier" 
+        name = "Sound" 
+        xmin = 0 
+        xmax = 0.5452433680227067 
+        intervals: size = 5 
+        intervals [1]:
+            xmin = 0 
+            xmax = 0.10304599432355666 
+            text = "r" 
+        intervals [2]:
+            xmin = 0.10304599432355666 
+            xmax = 0.19370983931352548 
+            text = "o" 
+        intervals [3]:
+            xmin = 0.19370983931352548 
+            xmax = 0.3180111992578869 
+            text = "lˀ" 
+        intervals [4]:
+            xmin = 0.3180111992578869 
+            xmax = 0.4159848406029223 
+            text = "^a" 
+        intervals [5]:
+            xmin = 0.4159848406029223 
+            xmax = 0.5452433680227067 
+            text = "l" 
+    item [2]:
+        class = "IntervalTier" 
+        name = "Word" 
+        xmin = 0 
+        xmax = 0.5452433680227067 
+        intervals: size = 1 
+        intervals [1]:
+            xmin = 0 
+            xmax = 0.5452433680227067 
+            text = "rolˀal" 
+    item [3]:
+        class = "IntervalTier" 
+        name = "Token" 
+        xmin = 0 
+        xmax = 0.5452433680227067 
+        intervals: size = 1 
+        intervals [1]:
+            xmin = 0 
+            xmax = 0.5452433680227067 
+            text = "1" 
+    item [4]:
+        class = "IntervalTier" 
+        name = "speaker" 
+        xmin = 0 
+        xmax = 0.5452433680227067 
+        intervals: size = 1 
+        intervals [1]:
+            xmin = 0 
+            xmax = 0.5452433680227067 
+            text = "F45" 
+    item [5]:
+        class = "TextTier" 
+        name = "Pulses" 
+        xmin = 0 
+        xmax = 0.5452433680227067 
+        points: size = 47 
+        points [1]:
+            number = 0.1042884229474943 
+            mark = "" 
+        points [2]:
+            number = 0.10999534426228053 
+            mark = "" 
+        points [3]:
+            number = 0.11569090963680217 
+            mark = "" 
+        points [4]:
+            number = 0.12134739901694225 
+            mark = "" 
+        points [5]:
+            number = 0.12697496710859113 
+            mark = "" 
+        points [6]:
+            number = 0.13255514366571575 
+            mark = "" 
+        points [7]:
+            number = 0.13810252097736253 
+            mark = "" 
+        points [8]:
+            number = 0.14359692787590816 
+            mark = "" 
+        points [9]:
+            number = 0.14904132103934664 
+            mark = "" 
+        points [10]:
+            number = 0.15444566280396543 
+            mark = "" 
+        points [11]:
+            number = 0.1598038888256177 
+            mark = "" 
+        points [12]:
+            number = 0.1650827863644153 
+            mark = "" 
+        points [13]:
+            number = 0.1703241831887201 
+            mark = "" 
+        points [14]:
+            number = 0.1755788982610884 
+            mark = "" 
+        points [15]:
+            number = 0.18080792561744374 
+            mark = "" 
+        points [16]:
+            number = 0.1860325803636691 
+            mark = "" 
+        points [17]:
+            number = 0.19126996010203356 
+            mark = "" 
+        points [18]:
+            number = 0.1965331747653032 
+            mark = "" 
+        points [19]:
+            number = 0.2018001770333857 
+            mark = "" 
+        points [20]:
+            number = 0.20721073693511372 
+            mark = "" 
+        points [21]:
+            number = 0.21274182636009087 
+            mark = "" 
+        points [22]:
+            number = 0.21870286129010985 
+            mark = "" 
+        points [23]:
+            number = 0.22489835511015244 
+            mark = "" 
+        points [24]:
+            number = 0.23261818984635063 
+            mark = "" 
+        points [25]:
+            number = 0.2455533727983461 
+            mark = "" 
+        points [26]:
+            number = 0.26189074213880836 
+            mark = "" 
+        points [27]:
+            number = 0.27903526667883227 
+            mark = "" 
+        points [28]:
+            number = 0.28979114000860307 
+            mark = "" 
+        points [29]:
+            number = 0.29656987781202915 
+            mark = "" 
+        points [30]:
+            number = 0.30337198599094073 
+            mark = "" 
+        points [31]:
+            number = 0.30962147250360594 
+            mark = "" 
+        points [32]:
+            number = 0.3155662514128146 
+            mark = "" 
+        points [33]:
+            number = 0.3216273232481388 
+            mark = "" 
+        points [34]:
+            number = 0.3277299060646097 
+            mark = "" 
+        points [35]:
+            number = 0.33394703688737515 
+            mark = "" 
+        points [36]:
+            number = 0.34025101870460617 
+            mark = "" 
+        points [37]:
+            number = 0.34664037641239887 
+            mark = "" 
+        points [38]:
+            number = 0.35314240609809033 
+            mark = "" 
+        points [39]:
+            number = 0.35963878752368217 
+            mark = "" 
+        points [40]:
+            number = 0.3660182737937294 
+            mark = "" 
+        points [41]:
+            number = 0.37248956386227405 
+            mark = "" 
+        points [42]:
+            number = 0.3792081913993002 
+            mark = "" 
+        points [43]:
+            number = 0.3859573447610476 
+            mark = "" 
+        points [44]:
+            number = 0.39278434681914476 
+            mark = "" 
+        points [45]:
+            number = 0.39964823627930635 
+            mark = "" 
+        points [46]:
+            number = 0.4065719542048569 
+            mark = "" 
+        points [47]:
+            number = 0.41356765346562696 
+            mark = "" 

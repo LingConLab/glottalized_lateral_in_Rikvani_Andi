@@ -1,0 +1,798 @@
+---
+title: "Glottalized lateral in Rikvani Andi: an acoustic study"
+author: "M. Daniel, G. Moroz, A. Shiryayev"
+output: 
+  html_document:
+      df_print: paged
+      code_folding: hide
+      toc: yes
+      toc_depth: 3
+      toc_float: yes
+knit: (function(inputFile, encoding) { 
+      out_dir <- 'docs';
+      rmarkdown::render(inputFile,
+                        encoding=encoding, 
+                        output_file=file.path(dirname(inputFile), out_dir, 'index.html')) })
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning = FALSE, comment = "")
+library(tidyverse)
+library(phonfieldwork)
+library(lme4)
+library(lmerTest)
+library(ggeffects)
+theme_set(theme_bw())
+data <- read_csv("data/extracted_data.csv")
+read_csv("data/modified_data.csv") %>% 
+  mutate(conditionNorm2 = factor(conditionNorm2, levels = c("lˀ, Individual words", "l, Individual words", "lˀ, Carrier phrase", "l, Carrier phrase", "lˀ, Free narrative", "l, Free narrative"))) ->
+  dataWrd
+```
+
+ZENODO
+
+# {.tabset .tabset-fade .tabset-pills}
+
+## Suplementary Materials
+
+### Apendix 1
+
+Stimuli list
+
+```{r, echo=FALSE}
+read_csv("data/stimuli_list.csv") %>% 
+  arrange(word) %>% 
+  DT::datatable()
+```
+
+### Apendix 2
+
+#### Table 10. 
+Intensity analysis per speaker
+```{r}
+dataWrd %>% 
+  filter(substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") %>%
+  group_by (speaker, wordType, conditionNorm) %>%
+  summarise(n = n(),
+            mInt = mean (snd2IntNorm),
+            sdInt = sd (snd2IntNorm)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:sdInt) %>% 
+  pivot_wider(names_from = c(wordType, stats), values_from = "values")
+```
+
+#### Table 11. 
+Duration analysis per speaker
+```{r}
+dataWrd %>% 
+  group_by (speaker, wordType, conditionNorm) %>%
+  summarise(n = n(),
+            mInt = mean (lDur),
+            sdInt = sd (lDur)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:sdInt) %>% 
+  pivot_wider(names_from = c(wordType, stats), values_from = "values")
+```
+
+#### Table 12. 
+A1-H1 intensity difference analysis per speaker
+```{r}
+dataWrd %>% 
+  filter (
+    (substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>%
+  group_by (speaker, conditionNorm, wordType) %>%
+  summarise (n = n(),
+             a1h1m = mean (a1h1Int),
+             a1h1sd = sd (a1h1Int)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:a1h1sd) %>% 
+  pivot_wider(names_from = c(wordType, stats), values_from = "values")
+```
+
+#### Table 13. 
+A2-H1 intensity difference analysis per speaker
+```{r}
+dataWrd %>% 
+  filter (
+    (substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>%
+  group_by (speaker, conditionNorm, wordType) %>%
+  summarise (n = n(),
+             a2h1m = mean (a2h1Int),
+             a2h1sd = sd (a2h1Int)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:a2h1sd) %>% 
+  pivot_wider(names_from = c(wordType, stats), values_from = "values")
+```
+
+#### Table 14. 
+H2-H1 intensity difference analysis per speaker
+```{r}
+dataWrd %>% 
+  filter (
+    (substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>%
+  group_by (speaker, conditionNorm, wordType) %>%
+  summarise (n = n(),
+             h2h1m = mean (h2h1Int),
+             h2h1sd = sd (h2h1Int)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:h2h1sd) %>% 
+  pivot_wider(names_from = c(wordType, stats), values_from = "values")
+```
+
+
+### Apendix 3
+Pulse and intensity profiles
+
+```{r}
+lapply(unique(dataWrd$speaker), function(i){
+if (i == "F45") {
+  # exclude "j_ilˀi_nno" from F45. Glottal stop
+  # exclude "kul_ilo_jd" from F45 - creak on /l/ in the end of a sentence
+  tmp <- data %>% filter (speaker == i &
+                          word != "j_ilˀ^i_nno" & word != "kul_il^o_jd")
+} else{
+  tmp <- data %>% filter (speaker == i)
+}
+
+# convert intervals between pulses to milliseconds
+tmp$plsIntvl <- tmp$plsIntvl * 1000
+
+# plot pulse profiles
+tmp %>%
+  ggplot (aes (x = pointsNorm, y = plsIntvl)) +
+  geom_line (aes(colour = conditionWord)) +
+  xlab ("sound timing, % of total, laterals are in [0, 1]") +
+  ylab ("pulse interval duration, ms") +
+  geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
+  geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
+  theme (legend.key.width = unit (0.5, "line"),
+         legend.position = "none",
+         axis.text.x = element_text(size = 12),
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_text(size = 12),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12)) +
+  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3), labels = c("-2", "-1", "0", "1", "2", "3")) +
+  scale_color_grey(start = 0.8, end = 0.2) +
+  annotate ("text", x = -0.7, y = 35, label = "/vowel/", size = 4.5) +
+  annotate ("text", x = 0.5, y = 35, label = "/lateral/", size = 4.5) +
+  annotate ("text", x = 2, y = 35, label = "/vowel/", size = 4.5) +
+  facet_grid (~conditionNorm~wordType, scales = "free")+
+  ggtitle(i) ->
+  p1
+
+# plot intensity profiles
+ tmp %>%
+  ggplot (aes (x = pointsNorm, y = intensityOrig)) +
+  geom_line (aes(colour = conditionWord)) +
+  xlab ("Sound timing, % of total, laterals are in [0, 1]") +
+  ylab ("Sound intensity,dB") +
+  ylim (40, 85) +
+  geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
+  geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
+  theme (legend.key.width = unit (0.5, "line"),
+         #legend.text = element_text(size = rel(0.75)),
+         #legend.text = element_blank(),
+         #legend.title = element_blank(),
+         legend.position = "none",
+         axis.text.x = element_text(size = 12),
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_text(size = 12),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12)) +
+   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3), labels = c("-2", "-1", "0", "1", "2", "3")) +
+  scale_color_grey(start = 0.8, end = 0.2) +
+  annotate ("text", x = -1, y = 85, label = "/vowel/", size = 4.5) +
+  annotate ("text", x = 0.5, y = 85, label = "/lateral/", size = 4.5) +
+  annotate ("text", x = 2, y = 85, label = "/vowel/", size = 4.5) +
+  facet_wrap (~conditionNorm~wordType, ncol = 2)  +
+  ggtitle(i) ->
+   p2
+ 
+ return(list(p1, p2))
+})
+```
+
+
+
+### Apendix 4
+Model printouts
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"),
+          conditionNorm != "Carrier phrase") %>% 
+  mutate(cond = conditionNorm,
+         speaker = factor(speaker,
+                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                      "M52", "M60", "M69", "M75")),
+         intensity = snd2IntNorm,
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+  lmer (intensity ~ cond*sound + (1|speaker), data = .) %>% 
+  summary()
+
+dataWrd %>% 
+  mutate(duration = lDur,
+         speaker = factor (speaker,
+                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                      "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "glottolised l"),
+         cond = conditionNorm,
+         maxPulse = plsMax) %>% 
+  lmer (duration ~ cond * sound + (1|speaker), data = .) %>% 
+  summary()
+
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(cond = conditionNorm,
+         speaker = factor (speaker,
+                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                           "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+  lmer(a1h1Int ~ cond * sound + (1|speaker), data = .) %>% 
+  summary()
+
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(cond = conditionNorm,
+         speaker = factor (speaker,
+                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                           "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+  lmer(a2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
+  summary()
+
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(cond = conditionNorm,
+         speaker = factor (speaker,
+                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                           "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+  lmer(h2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
+  summary()
+
+dataWrd %>% 
+  mutate(duration = lDur,
+         speaker = factor (speaker,
+                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                      "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "glottolised l"),
+         cond = conditionNorm,
+         maxPulse = plsMax) %>% 
+  lmer (maxPulse ~ cond * sound + (1|speaker), data = .) %>% 
+  summary()
+```
+
+
+### Apendix 5
+Praat script that extracts:
+
+* **Intensity** For each /Ca/ segment containing a target consonant sound (labeled as /C/) we normalized the average intensity of the segment so as the right vowel (/a/) had intensity value in the range [69.5 dB; 70.5 dB]. To do this we used the Scale intensity function in Praat. We then extracted the intensity of the target lateral sound from this segment.
+* **Duration** As explained above, formant transitions were included into the duration of the lateral; in the absence of transitions, the limits of a lateral were identified by a decrease in intensity.
+* **Formant structure** For each /Ca/ (target consonant and /a/ vowel) segment where the data on harmonics was available, we extracted the lateral’s H1, H2, A1 and A2 frequencies and intensities. The data was extracted from the central segment of a consonant (the middle of the consonant +/- 10 ms).
+* **Pulse profile** We annotated glottal pulses for each target sound and plotted them to investigate the timing of the strongest glottal constriction to distinguish between pre- and post-glottlized
+realizations.
+
+```{r, echo=FALSE}
+cat(read_lines("data/data_extraction.praat"), sep = "\n")
+```
+
+## Code for graphs and statistical modeling
+
+### Figure 1
+A spectrogram of the /olˀa/ segment in /rolˀal/ (“clothes”) produced by the speaker F 45 in the first individual utterance of the word. Vertical lines on the waveform correspond to glottal pulses.
+
+```{r, fig.width=9, fig.height=7}
+textgrid_to_df("data/F45_clothes_1_utterance.TextGrid") %>% 
+  filter(tier %in% c(1, 5)) %>% 
+  mutate(content = str_replace(content, "\\^a", "a")) ->
+  tg
+draw_sound("data/F45_clothes_1_utterance.wav",
+           annotation = tg, 
+           from = 0.10304, 
+           to = 0.415985, 
+           spectrum_info = FALSE)
+```
+
+### Figure 2
+Pulse profile corresponding to the spectrogram in Fig. 1. Black dots show the timing of each glottal pulse. Red dots always project into the middle of the interval between the two black dots. The red line shows the lengthening of the pulses in response to glottalization. The lower horizontal axis shows original pulse timing within the sound, the upper horizontal axis shows normalized timing, where the lateral is in the interval [0, 1]. Vertical dashed lines delimit sounds of the segment.
+
+```{r, fig.width=10}
+data %>% 
+  mutate(conditionNorm  = factor(conditionNorm, levels = c("Individual words", "Carrier phrase", "Free narrative"))) ->
+  data
+
+tmp <- subset (data, speaker == "F45" & condition == "1" & word == "r_olˀ^a_l")
+
+# points is a variable containing middles of intervals between pulses
+# the lateral begins in point 0
+# pointsOrig - middles of intervals with the beginning of the first vowel in point 0.
+# pointsNorm is a variable with normalized middles of intervals between pulses,
+# where the lateral is in [0, 1]
+ 
+# move middles of intervals so that the left vowel begins at point 0
+tmp$points <- tmp$points - dataWrd$snd1Bgn[dataWrd$speaker == "F45" & dataWrd$condition == 1 & dataWrd$word == "r_olˀ^a_l"]
+
+# convert to milliseconds
+tmp$points <- tmp$points * 1000
+tmp$plsIntvl <- tmp$plsIntvl * 1000
+tmp$pointsOrig <- tmp$pointsOrig * 1000
+
+# line coordinates
+ln1 <- data.frame (xLine1 = c (tmp$pointsOrig [26], tmp$pointsOrig [27]),
+                   yLine1 <- c (0, 0))
+
+ln2 <- data.frame (xLine2 = rep (mean (ln1$xLine1), 2),
+                   yLine2 = c (0, ln1$xLine1[2] - ln1$xLine1[1]))
+
+ln3 <- data.frame (xLine3 = c((ln1$xLine1[2] + ln1$xLine1[1]) / 2, 0.19 * 1000),
+                   yLine3 = c(ln2$yLine2[2] / 2, 0.014 * 1000))
+
+tmp2 <- subset (dataWrd, speaker == "F45" & condition == "1" & word =="r_olˀ^a_l")
+tmp2$snd1Bgn <- tmp2$snd1Bgn * 1000
+tmp2$snd2Bgn <- tmp2$snd2Bgn * 1000
+tmp2$snd3Bgn <- tmp2$snd3Bgn * 1000
+
+# black dots (pulse timing)
+tmp3 <- data.frame (pointsOrig = c (tmp$pointsOrig, tmp$pointsOrig[nrow(tmp)] + tmp$plsIntvl[nrow(tmp)]))
+tmp3 <-
+  tmp3 %>% filter (tmp3$pointsOrig > 50 & tmp3$pointsOrig < 251)
+tmp3$pointsOrig[nrow(tmp3)] = 249.9
+tmp3$label <- ""
+tmp3$label[17] <- "t[i]"
+tmp3$label[18] <- "t[i+1]"
+
+tmp %>% 
+  ggplot(aes (x = points, y = plsIntvl)) +
+  geom_line (aes(colour = condition)) +
+  geom_point(aes(colour = condition)) +
+  xlab ("VCV segment timing, ms") +
+  ylab ("interval between pulses, ms") +
+  ylim (0, 50) +
+  geom_vline(xintercept = -tmp2$snd1Bgn, linetype = "dashed",
+             size = 0.5) +
+  annotate ("text", x = 70, y = 30, label = "/o/", size = 6) +
+  annotate ("text", x = 150, y = 30, label = "/lˀ/", size = 6) +
+  annotate ("text", x = 235, y = 30, label = "/a/", size = 6) +
+  geom_vline(xintercept = -tmp2$snd1Bgn + tmp2$snd3Bgn, linetype = "dashed",
+             size = 0.5) +
+  theme(legend.title=element_blank(), legend.position = "bottom",
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        legend.text = element_text(size = 18)) +
+  geom_point (data = tmp3, aes (x = pointsOrig,
+                               fill = "timing of glottal pulses, ms"), y = 0) +
+  geom_text(data = tmp3, aes (x = pointsOrig-1, label = label), parse = TRUE, size = 6, y = 3)+
+  geom_line (data = ln1, aes(x = xLine1, y = yLine1), size = 0.2) +
+  geom_line (data = ln2, aes(x = xLine2, y = yLine2), arrow = arrow(length=unit(0.2,"cm"), ends="both", type = "closed"), size = 0.2) +
+  geom_line (data = ln3, aes(x = xLine3, y = yLine3), arrow = arrow(length=unit(0.2,"cm"), ends="first", type = "closed"), size = 0.2) +
+  scale_color_hue(labels = c("duration of intervals between pulses, ms")) +
+  scale_fill_discrete(labels = c("glottal pulse timing, ms")) +
+  annotate ("label", x = ln3$xLine3[2] + 2,
+            y = ln3$yLine3[2] + 2,
+            label = "t[i+1] - t[i]", size = 6, parse = TRUE)+
+  scale_x_continuous (limits = c(50, 250), sec.axis = sec_axis ((~. / tmp2$snd3Bgn + tmp2$snd1Bgn / tmp2$snd3Bgn), breaks = c(-0.1, 0, 0.5, 1, 1.1), name = "normalized sound timing, the lateral is in [0, 1]"))
+```
+
+### Figure 3
+Pulse profiles for intervocalic laterals produced by speaker F45. The peaks in the beginning of /lˀ/ in individual words show closure due to tongue position in the lateral after a close vowel.
+
+```{r}
+data %>% 
+  filter (speaker ==  "F45",
+                 word != "j_ilˀ^i_nno",
+                 word != "kul_il^o_jd") %>% 
+  mutate(plsIntvl = plsIntvl * 1000) %>% 
+  ggplot (aes (x = pointsNorm, y = plsIntvl)) +
+  geom_line (aes(colour = conditionWord)) +
+  xlab ("sound timing, % of total, laterals are in [0, 1]") +
+  ylab ("pulse interval duration, ms") +
+  geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
+  geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
+  theme (legend.key.width = unit (0.5, "line"),
+         legend.position = "none",
+         axis.text.x = element_text(size = 12),
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_text(size = 12),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12)) +
+  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3), labels = c("-2", "-1", "0", "1", "2", "3")) +
+  scale_color_grey(start = 0.8, end = 0.2) +
+  annotate ("text", x = -0.7, y = 35, label = "/vowel/", size = 4.5) +
+  annotate ("text", x = 0.5, y = 35, label = "/lateral/", size = 4.5) +
+  annotate ("text", x = 2, y = 35, label = "/vowel/", size = 4.5) +
+  facet_grid (~conditionNorm~wordType, scales = "free")
+```
+
+### Figure 4
+Pulse profiles for intervocalic laterals produced by speaker M69. Note that the y-axes have different scales, the words describing sounds always stay on the same level (35 ms).
+
+```{r}
+data %>% 
+  filter (speaker ==  "M69") %>% 
+  mutate(plsIntvl = plsIntvl * 1000) %>% 
+  ggplot (aes (x = pointsNorm, y = plsIntvl)) +
+  geom_line (aes(colour = conditionWord)) +
+  xlab ("sound timing, % of total, laterals are in [0, 1]") +
+  ylab ("pulse interval duration, ms") +
+  geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
+  geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
+  theme (legend.key.width = unit (0.5, "line"),
+         legend.position = "none",
+         axis.text.x = element_text(size = 12),
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_text(size = 12),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12)) +
+  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3), labels = c("-2", "-1", "0", "1", "2", "3")) +
+  scale_color_grey(start = 0.8, end = 0.2) +
+  annotate ("text", x = -0.7, y = 35, label = "/vowel/", size = 4.5) +
+  annotate ("text", x = 0.5, y = 35, label = "/lateral/", size = 4.5) +
+  annotate ("text", x = 2, y = 35, label = "/vowel/", size = 4.5) +
+  facet_grid (~conditionNorm~wordType, scales = "free")
+```
+
+### Figure 5
+An example of a “silent” realization of /lˀ/ M69. Within the lateral we can see an area of a flat waveform showing full glottal constriction. The realization is the first individual utterance of /relˀa/ (“hand”).
+
+```{r, fig.width=9, fig.height=7}
+textgrid_to_df("data/M69_hand_1_utterance.TextGrid") %>% 
+  filter(tier %in% c(1, 5)) ->
+  tg
+draw_sound("data/M69_hand_1_utterance.wav",
+           annotation = tg, 
+           from = 0.1427, 
+           to = 0.674, 
+           spectrum_info = FALSE)
+```
+
+
+### Figure 6
+Timing of the longest interval between glottal pulses as a proxy for glottal constriction.
+
+```{r, fig.height=7, fig.width=10}
+# base line: median interval between pulses for /l/ + 3 * SD
+yBaseLine <- data %>% filter (wordType == "l") %>%
+  select (speaker, plsIntvl) %>%
+  group_by (speaker) %>%
+  summarize (avIntvl = mean (plsIntvl),
+             sdIntvl = sd (plsIntvl))
+
+yBaseLine <- data.frame (yBaseLine, yIntercept = (yBaseLine$avIntvl + yBaseLine$sdIntvl * 3) * 1000)
+
+
+dataWrd %>% 
+  mutate(plsMax = plsMax * 1000) %>%  # convert to milliseconds
+  ggplot () +
+  geom_point (aes (x = plsMaxPointNorm, y = plsMax, color = conditionNorm, shape = wordType), size = 1.5) +
+  scale_color_grey(start = 0, end = 0.7) +
+  geom_vline (xintercept = 0, linetype = "dashed", size = 0.5) +
+  geom_vline (xintercept = 1, linetype = "dashed", size = 0.5) +
+  geom_vline (xintercept = 0.33, linetype = "dotted", size = 0.5) +
+  geom_vline (xintercept = 0.66, linetype = "dotted", size = 0.5) +
+  geom_hline (data = yBaseLine, aes (yintercept = yIntercept), linetype = "dashed", size = 0.4) +
+  ylab ("duration of the longest interval between pulses, ms") +
+  xlab ("normalized sound timing, [0; 1] interval between the vertical lines corresponds to the lateral") +
+  theme(legend.title = element_blank(),
+        axis.text.x = element_text(size = 12),
+        axis.text.y = element_text(size = 12),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        strip.text.x = element_text(size = 12),
+        legend.position = "bottom") +
+  scale_x_continuous(breaks = c(-2, -1, 0, 0.33, 0.66, 1, 2, 3), labels = c("-2", "-1", "0", "1/3","2/3", "1", "2", "3")) +
+  ylim (0, 0.22 * 1000) +
+  annotate ("text", x = -1, y = 0.2 * 1000, label = "/vowel/", size = 5) +
+  annotate ("text", x = 0.5, y = 0.2 * 1000, label = "/lateral/", size = 5) +
+  annotate ("text", x = 2, y = 0.2 * 1000, label = "/vowel/", size = 5) +
+  facet_wrap (~speaker, ncol = 2)
+```
+
+### Figure 7
+Intensities of glottalized and modal laterals compared (only /la/ and /lˀa/ segments).
+
+```{r}
+# only laterals followed by /a/: snd3 == "a*" | snd3 == "^a*"
+# no carrier phrase: too few realizations
+ 
+dataWrd %>% 
+  filter((substr(snd3, 1,1) == "a" | substr(snd3, 1,2) == "^a"),
+         condition != "Carrier phrase") %>% 
+  ggplot (aes (x = conditionNorm2, y = snd2IntNorm, color = conditionNorm2)) +
+  geom_point (position = position_jitter(w = 0.2, h = 0)) +
+  geom_boxplot (outlier.alpha = 0) +
+  theme (legend.title = element_blank(),
+         axis.text.x=element_text(angle=55, hjust=1, size = 12),
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_blank(),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12),
+         legend.position = "none") +
+  ylab ("Normalized intensity, dB") +
+  scale_color_grey(start=0.6, end=0.2) +
+  facet_wrap (~speaker, ncol=5)
+```
+
+### Figure 8
+An example of a lower-intensity modal realization of /lˀ/ by the speaker M52 in the carrier phrase. The word is /rolˀal/ (“clothes”).
+
+```{r, fig.width=9, fig.height=7}
+textgrid_to_df("data/M52_clothes_carrier_phrase.TextGrid") %>% 
+  filter(tier %in% c(1, 5)) %>% 
+  mutate(content = str_replace(content, "\\^a", "a")) ->
+  tg
+draw_sound("data/M52_clothes_carrier_phrase.wav",
+           annotation = tg, 
+           from = 0.120225, 
+           to = 0.392, 
+           spectrum_info = FALSE)
+```
+
+### Table 4
+
+```{r}
+dataWrd %>% 
+  filter(str_detect(conditionNorm, "(Individual words)|(Free narrative)")) %>%
+  group_by(conditionNorm, snd2) %>% 
+  summarise(n = n(), 
+            mean = mean(snd2IntNorm), 
+            sd = sd(snd2IntNorm)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
+  pivot_wider(names_from = c(snd2, stats), values_from = "values")
+```
+
+### Figure 9
+```{r}
+dataWrd %>% 
+  mutate(lDur = lDur * 1000) %>%  # convert to milliseconds
+  ggplot (aes (x = conditionNorm2, y = lDur, color = conditionNorm2)) +
+  geom_point (position = position_jitter(w = 0.2, h = 0)) +
+  geom_boxplot (outlier.alpha = 0) +
+  theme (legend.title = element_blank(),
+         axis.text.x=element_text(angle=55, hjust=0.95, size = 12),
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_blank(),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12),
+         legend.position = "none") +
+  ylab ("sound duration, ms") +
+  scale_color_grey(start=0.6, end=0.2) +
+  facet_wrap (~speaker, ncol=5)
+```
+
+### Table 5
+
+```{r}
+dataWrd %>% 
+  mutate(lDur = lDur * 1000) %>%  # convert to milliseconds
+  group_by(conditionNorm, snd2) %>% 
+  summarise(n = n(), 
+            mean = mean(lDur), 
+            sd = sd(lDur)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
+  pivot_wider(names_from = c(snd2, stats), values_from = "values")
+```
+
+### Figure 10. 
+Differences between intensities of A1-H1.
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
+          is.na (a1h1Int) == FALSE,
+          conditionNorm != "Carrier phrase",
+          !(speaker == "M69" & conditionNorm == "Individual words"),
+          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
+    ggplot() +
+  geom_point (aes (y = a1h1Int, x = conditionNorm2, color = factor("red", label = "A1-H1")), shape = 21, position = position_jitter(w = 0.2, h = 0)) +
+  geom_boxplot (aes (y = a1h1Int, x = conditionNorm2, color = factor("red", label = "A1-H1")), outlier.alpha = 0) +
+  theme (axis.text.x=element_text(angle=60, hjust=1, size = 12),
+         legend.position = "none",
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_text(size = 12),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12)) +
+  ylab ("Intensity difference, dB") +
+  scale_color_grey(start = 0.5, end = 0.2) +
+  labs (color = "") +
+  xlab ("") +
+  facet_wrap (~speaker)
+```
+
+### Figure 11. 
+Differences between intensities of A2-H1.
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
+          is.na (a1h1Int) == FALSE,
+          conditionNorm != "Carrier phrase",
+          !(speaker == "M69" & conditionNorm == "Individual words"),
+          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
+  ggplot() +
+  geom_point (aes (y = a2h1Int, x = conditionNorm2, color = factor("green", label = "A2-H1")), shape = 22, position = position_jitter(w = 0.2, h = 0)) +
+  geom_boxplot (aes (y = a2h1Int, x = conditionNorm2, color = factor("green", label = "A2-H1")), outlier.alpha = 0) +
+  theme (axis.text.x=element_text(angle=60, hjust=1, size = 12),
+         legend.position = "none",
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_text(size = 12),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12)) +
+  ylab ("Intensity difference, dB") +
+  scale_color_grey(start = 0.5, end = 0.2) +
+  labs (color = "") +
+  xlab ("") +
+  facet_wrap (~speaker)
+```
+
+### Figure 12. 
+Differences between intensities of H2-H1.
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
+          is.na (a1h1Int) == FALSE,
+          conditionNorm != "Carrier phrase",
+          !(speaker == "M69" & conditionNorm == "Individual words"),
+          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
+  ggplot() +
+  geom_point (aes (y = h2h1Int, x = conditionNorm2, color = factor("blue", label = "H2-H1")), shape = 22, position = position_jitter(w = 0.2, h = 0)) +
+  geom_boxplot (aes (y = h2h1Int, x = conditionNorm2, color = factor("blue", label = "H2-H1")), outlier.alpha = 0) +
+  theme (axis.text.x=element_text(angle=60, hjust=1, size = 12),
+         legend.position = "none",
+         axis.text.y = element_text(size = 12),
+         axis.title.x = element_text(size = 12),
+         axis.title.y = element_text(size = 12),
+         strip.text.x = element_text(size = 12),
+         strip.text.y = element_text(size = 12)) +
+#  ggtitle ("H2-H1 intensity difference") +
+  ylab ("Intensity difference, dB") +
+  scale_color_grey(start = 0.5, end = 0.2) +
+  labs (color = "") +
+  xlab ("") +
+  facet_wrap (~speaker)
+```
+
+### Table 7. 
+A1-H1 intensity
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
+          is.na (a1h1Int) == FALSE,
+          conditionNorm != "Carrier phrase",
+          !(speaker == "M69" & conditionNorm == "Individual words"),
+          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
+  group_by(conditionNorm, snd2) %>% 
+  summarise(n = n(), 
+            mean = mean(a1h1Int), 
+            sd = sd(a1h1Int)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
+  pivot_wider(names_from = c(snd2, stats), values_from = "values")
+```
+
+### Table 8. 
+A2-H1 intensity
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
+          is.na (a1h1Int) == FALSE,
+          conditionNorm != "Carrier phrase",
+          !(speaker == "M69" & conditionNorm == "Individual words"),
+          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
+  group_by(conditionNorm, snd2) %>% 
+  summarise(n = n(), 
+            mean = mean(a2h1Int), 
+            sd = sd(a2h1Int)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
+  pivot_wider(names_from = c(snd2, stats), values_from = "values")
+```
+
+### Table 9.
+H2-H1 intensity
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
+          is.na (a1h1Int) == FALSE,
+          conditionNorm != "Carrier phrase",
+          !(speaker == "M69" & conditionNorm == "Individual words"),
+          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
+  group_by(conditionNorm, snd2) %>% 
+  summarise(n = n(), 
+            mean = mean(h2h1Int), 
+            sd = sd(h2h1Int)) %>% 
+  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
+  pivot_wider(names_from = c(snd2, stats), values_from = "values")
+```
+
+### Figure 13. 
+Effect plots for laterals’ intensity: condition and sound are independent variables, speaker is a random intercept.
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"),
+          conditionNorm != "Carrier phrase") %>% 
+  mutate(cond = conditionNorm,
+         speaker = factor(speaker,
+                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                      "M52", "M60", "M69", "M75")),
+         intensity = snd2IntNorm,
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+  lmer (intensity ~ cond*sound + (1|speaker), data = .) %>% 
+  summary()
+```
+
+
+### Figure 14. 
+Effect plots for creak (as proxied by maximal interval between 2 consecutive glottal pulses): condition and sound are independent variables, speaker is a random intercept.
+
+### Figure 15. 
+Effect plots for laterals’ duration: condition and sound are independent variables, speaker is a random intercept.
+
+### Figure 16. 
+Effect plots for intensity difference between the harmonic closest to A1 and H1: condition and sound are independent variables, speaker is a random intercept.
+
+### Figure 17. 
+Effect plots for intensity difference between the harmonic closest to A2 and H1: condition and sound are independent variables, speaker is a random intercept.
+
+### Figure 18. 
+Effect plots for intensity difference between H2 and H1: condition and sound are independent variables, speaker is a random intercept.
+
+## Package versions
+
+```{r}
+packages <- c("rmarkdown", "tidyverse", "phonfieldwork", "lme4", "lmerTest", "effects")
+map_dfr(packages, function(i){
+  tibble(package = i,
+         version = paste(packageVersion(i), sep = "."))
+}) %>% 
+  arrange(package)
+```
