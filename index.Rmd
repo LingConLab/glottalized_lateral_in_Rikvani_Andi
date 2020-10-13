@@ -153,7 +153,7 @@ tmp$plsIntvl <- tmp$plsIntvl * 1000
 # plot pulse profiles
 tmp %>%
   ggplot (aes (x = pointsNorm, y = plsIntvl)) +
-  geom_line (aes(group = conditionWord)) +
+  geom_line (aes(group = conditionWord), alpha = 0.4) +
   xlab ("sound timing, % of total, laterals are in [0, 1]") +
   ylab ("pulse interval duration, ms") +
   geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
@@ -420,7 +420,7 @@ data %>%
                  word != "kul_il^o_jd") %>% 
   mutate(plsIntvl = plsIntvl * 1000) %>% 
   ggplot (aes (x = pointsNorm, y = plsIntvl)) +
-  geom_line (aes(group = conditionWord), alpha = 0.4) +
+  geom_line (aes(group = conditionWord),  alpha = 0.4) +
   xlab ("sound timing, % of total, laterals are in [0, 1]") +
   ylab ("pulse interval duration, ms") +
   geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
