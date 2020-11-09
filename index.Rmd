@@ -31,6 +31,7 @@ read_csv("data/extracted_data.csv") %>%
   data  
 read_csv("data/modified_data.csv") %>% 
   mutate(snd2 = factor(snd2, levels = c("lˀ", "l")),
+         conditionNorm = factor(conditionNorm, levels = c("Individual words", "Carrier phrase", "Free narrative")),
          conditionNorm2 = factor(conditionNorm2, levels = c("lˀ, Individual words", "l, Individual words", "lˀ, Carrier phrase", "l, Carrier phrase", "lˀ, Free narrative", "l, Free narrative"))) ->
   dataWrd
 ```
@@ -215,6 +216,10 @@ Model printouts
 
 ```{r}
 dataWrd %>% 
+  mutate(snd2 = factor(snd2, levels = c("l", "lˀ"))) ->
+  dataWrd 
+
+dataWrd %>% 
   filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"),
           conditionNorm != "Carrier phrase") %>% 
   mutate(cond = conditionNorm,
@@ -223,7 +228,7 @@ dataWrd %>%
                                       "M52", "M60", "M69", "M75")),
          intensity = snd2IntNorm,
          sound = wordType,
-         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
   lmer (intensity ~ cond*sound + (1|speaker), data = .) %>% 
   summary()
 
@@ -233,7 +238,7 @@ dataWrd %>%
                           levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
                                       "M52", "M60", "M69", "M75")),
          sound = wordType,
-         sound = ifelse(sound == "l", "l", "glottolised l"),
+         sound = ifelse(sound == "l", "l", "lˤ"),
          cond = conditionNorm,
          maxPulse = plsMax) %>% 
   lmer (duration ~ cond * sound + (1|speaker), data = .) %>% 
@@ -250,7 +255,7 @@ dataWrd %>%
                                levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
                                            "M52", "M60", "M69", "M75")),
          sound = wordType,
-         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
   lmer(a1h1Int ~ cond * sound + (1|speaker), data = .) %>% 
   summary()
 
@@ -265,7 +270,7 @@ dataWrd %>%
                                levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
                                            "M52", "M60", "M69", "M75")),
          sound = wordType,
-         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
   lmer(a2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
   summary()
 
@@ -280,7 +285,7 @@ dataWrd %>%
                                levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
                                            "M52", "M60", "M69", "M75")),
          sound = wordType,
-         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
   lmer(h2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
   summary()
 
@@ -290,11 +295,15 @@ dataWrd %>%
                           levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
                                       "M52", "M60", "M69", "M75")),
          sound = wordType,
-         sound = ifelse(sound == "l", "l", "glottolised l"),
+         sound = ifelse(sound == "l", "l", "lˤ"),
          cond = conditionNorm,
          maxPulse = plsMax) %>% 
   lmer (maxPulse ~ cond * sound + (1|speaker), data = .) %>% 
   summary()
+
+dataWrd %>% 
+  mutate(snd2 = factor(snd2, levels = c("lˀ", "l"))) ->
+  dataWrd 
 ```
 
 
@@ -311,7 +320,7 @@ realizations.
 cat(read_lines("data/data_extraction.praat"), sep = "\n")
 ```
 
-## Code for graphs and statistical modeling
+## Code for graphs
 
 ### Figure 1
 A spectrogram of the /olˀa/ segment in /rolˀal/ (“clothes”) produced by the speaker F 45 in the first individual utterance of the word. Vertical lines on the waveform correspond to glottal pulses.
@@ -771,6 +780,10 @@ Effect plots for laterals’ intensity: condition and sound are independent vari
 
 ```{r}
 dataWrd %>% 
+  mutate(snd2 = factor(snd2, levels = c("l", "lˀ"))) ->
+  dataWrd  
+
+dataWrd %>% 
   filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"),
           conditionNorm != "Carrier phrase") %>% 
   mutate(cond = conditionNorm,
@@ -779,31 +792,117 @@ dataWrd %>%
                                       "M52", "M60", "M69", "M75")),
          intensity = snd2IntNorm,
          sound = wordType,
-         sound = ifelse(sound == "l", "l", "glottolised l")) %>% 
+         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
   lmer (intensity ~ cond*sound + (1|speaker), data = .) %>% 
-  summary()
+  ggpredict(c("sound", "cond")) %>% 
+  plot()
 ```
 
 
 ### Figure 14. 
 Effect plots for creak (as proxied by maximal interval between 2 consecutive glottal pulses): condition and sound are independent variables, speaker is a random intercept.
 
+```{r}
+dataWrd %>% 
+  mutate(duration = lDur,
+         speaker = factor (speaker,
+                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                      "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "lˤ"),
+         cond = conditionNorm,
+         maxPulse = plsMax) %>% 
+  lmer (maxPulse ~ cond * sound + (1|speaker), data = .) %>% 
+  ggpredict(c("sound", "cond")) %>% 
+  plot()
+```
+
 ### Figure 15. 
 Effect plots for laterals’ duration: condition and sound are independent variables, speaker is a random intercept.
+
+```{r}
+dataWrd %>% 
+  mutate(duration = lDur,
+         speaker = factor (speaker,
+                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                      "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "lˤ"),
+         cond = conditionNorm,
+         maxPulse = plsMax) %>% 
+  lmer (duration ~ cond * sound + (1|speaker), data = .) %>% 
+  ggpredict(c("sound", "cond")) %>% 
+  plot()
+```
 
 ### Figure 16. 
 Effect plots for intensity difference between the harmonic closest to A1 and H1: condition and sound are independent variables, speaker is a random intercept.
 
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(cond = conditionNorm,
+         speaker = factor (speaker,
+                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                           "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
+  lmer(a1h1Int ~ cond * sound + (1|speaker), data = .) %>% 
+  ggpredict(c("sound", "cond")) %>% 
+  plot()
+```
+
+
 ### Figure 17. 
 Effect plots for intensity difference between the harmonic closest to A2 and H1: condition and sound are independent variables, speaker is a random intercept.
+
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(cond = conditionNorm,
+         speaker = factor (speaker,
+                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                           "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
+  lmer(a2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
+  ggpredict(c("sound", "cond")) %>% 
+  plot()
+```
 
 ### Figure 18. 
 Effect plots for intensity difference between H2 and H1: condition and sound are independent variables, speaker is a random intercept.
 
+```{r}
+dataWrd %>% 
+  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
+      is.na (a1h1Int) == FALSE &
+      conditionNorm != "Carrier phrase" &
+      !(speaker == "M69" & conditionNorm == "Individual words") &
+      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
+  mutate(cond = conditionNorm,
+         speaker = factor (speaker,
+                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
+                                           "M52", "M60", "M69", "M75")),
+         sound = wordType,
+         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
+  lmer(h2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
+  ggpredict(c("sound", "cond")) %>% 
+  plot()
+```
+
 ## Package versions
 
 ```{r}
-packages <- c("rmarkdown", "tidyverse", "phonfieldwork", "lme4", "lmerTest", "effects")
+packages <- c("rmarkdown", "tidyverse", "phonfieldwork", "lme4", "lmerTest", "ggeffects")
 map_dfr(packages, function(i){
   tibble(package = i,
          version = paste(packageVersion(i), sep = "."))
