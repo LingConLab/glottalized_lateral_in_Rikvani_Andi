@@ -1,0 +1,12 @@
+---
+title: "Glottalized lateral in Rikvani Andi: an acoustic study"
+author: "M. Daniel, G. Moroz, A. Shiryaev"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+mainfont: Brill
+monofont: Iosevka
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning = FALSE, comment = "", dev="cairo_pdf")

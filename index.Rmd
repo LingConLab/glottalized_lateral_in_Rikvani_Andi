@@ -1,6 +1,6 @@
 ---
 title: "Glottalized lateral in Rikvani Andi: an acoustic study"
-author: "M. Daniel, G. Moroz, A. Shiryaev"
+author: "A. Shiryaev, M. Daniel, G. Moroz"
 output: 
   html_document:
       df_print: paged
