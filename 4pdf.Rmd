@@ -1,11 +1,13 @@
 ---
 title: "Glottalized lateral in Rikvani Andi: an acoustic study"
-author: "M. Daniel, G. Moroz, A. Shiryaev"
+author: "A. Shiryaev, M. Daniel, G. Moroz"
 output: 
   pdf_document:
     latex_engine: xelatex
+  always_allow_html: true
 mainfont: Brill
 monofont: Iosevka
+
 ---
 
 ```{r setup, include=FALSE}
