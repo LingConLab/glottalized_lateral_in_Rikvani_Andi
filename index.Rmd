@@ -1,911 +1,1058 @@
 ---
 title: "Glottalized lateral in Rikvani Andi: an acoustic study"
 author: "A. Shiryaev, M. Daniel, G. Moroz"
-output: 
-  html_document:
-      df_print: paged
-      code_folding: hide
-      toc: yes
-      toc_depth: 3
-      toc_float: yes
-knit: (function(inputFile, encoding) { 
-      out_dir <- 'docs';
-      rmarkdown::render(inputFile,
-                        encoding=encoding, 
-                        output_file=file.path(dirname(inputFile), out_dir, 'index.html')) })
-editor_options: 
-  chunk_output_type: console
+output:
+  html_document: default
+date: "2022-08-14"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(message=FALSE, warning = FALSE, comment = "")
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4067126.svg)](https://doi.org/10.5281/zenodo.4067126)
+
+```{r Libraries, include=FALSE}
+# include all libraries
+knitr::opts_chunk$set(echo = TRUE)
+library (readxl)
 library(tidyverse)
-library(phonfieldwork)
 library(lme4)
 library(lmerTest)
-library(ggeffects)
-theme_set(theme_bw())
-read_csv("data/extracted_data.csv") %>% 
-  mutate(wordType = factor(wordType, levels = c("lˀ", "l")),
-         conditionNorm = factor(conditionNorm, levels = c("Individual words", "Carrier phrase", "Free narrative"))) ->
-  data  
-read_csv("data/modified_data.csv") %>% 
-  mutate(snd2 = factor(snd2, levels = c("lˀ", "l")),
-         conditionNorm = factor(conditionNorm, levels = c("Individual words", "Carrier phrase", "Free narrative")),
-         conditionNorm2 = factor(conditionNorm2, levels = c("lˀ, Individual words", "l, Individual words", "lˀ, Carrier phrase", "l, Carrier phrase", "lˀ, Free narrative", "l, Free narrative"))) ->
-  dataWrd
+library(effects)
+library(tinytex)
+library(knitr)
+library(kableExtra)
 ```
 
-[![DOI](https://zenodo.org/badge/301516528.svg)](https://zenodo.org/badge/latestdoi/301516528)
+```{r Input data, include=FALSE}
+# read the data
+fnames <- c ("07_M35_M40_free_narr", "08_M69_free_narr", "09_M69_free_narr",
+             "14_F45_free_narr", "17_F45_free_narr", "18_F45_free_narr",
+             "21_F45_free_narr", "35_M35_free_narr", "82_M75_free_narr",
+             "84_M75_free_narr", "F30_ind_wrd_carr_phr",
+             "F45_ind_wrd_carr_phr", "F49_ind_wrd_carr_phr", "M50_ind_wrd_carr_phr",
+             "M52_ind_wrd_carr_phr", "M60_ind_wrd_carr_phr", "M69_ind_wrd_carr_phr"
+)
 
-# {.tabset .tabset-fade .tabset-pills}
+# ---- VARIABLES ----
 
-## Suplementary Materials
+data_pulses <- data.frame()
+data_sounds <- data.frame()
 
-### Apendix 1
+# ---- READ THE DATA ----
 
-Stimuli list
+data_syllables <-read.table(paste("_ Syllables.txt", sep = ""), header = TRUE, sep = " ", dec = ".", encoding = "UTF-8", quote = "\"")
+data_syllables$syllable_type[data_syllables$syllable_type != 0] <- "closed"
+data_syllables$syllable_type[data_syllables$syllable_type == 0] <- "open"
 
-```{r, echo=FALSE}
-read_csv("data/stimuli_list.csv") %>% 
-  arrange(word) %>% 
-  DT::datatable()
-```
-
-### Apendix 2
-
-#### Table 10. 
-Intensity analysis per speaker
-```{r}
-dataWrd %>% 
-  filter(substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") %>%
-  group_by (speaker, wordType, conditionNorm) %>%
-  summarise(n = n(),
-            mInt = mean (snd2IntNorm),
-            sdInt = sd (snd2IntNorm)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:sdInt) %>% 
-  pivot_wider(names_from = c(wordType, stats), values_from = "values")
-```
-
-#### Table 11. 
-Duration analysis per speaker
-```{r}
-dataWrd %>% 
-  group_by (speaker, wordType, conditionNorm) %>%
-  summarise(n = n(),
-            mInt = mean (lDur),
-            sdInt = sd (lDur)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:sdInt) %>% 
-  pivot_wider(names_from = c(wordType, stats), values_from = "values")
-```
-
-#### Table 12. 
-A1-H1 intensity difference analysis per speaker
-```{r}
-dataWrd %>% 
-  filter (
-    (substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>%
-  group_by (speaker, conditionNorm, wordType) %>%
-  summarise (n = n(),
-             a1h1m = mean (a1h1Int),
-             a1h1sd = sd (a1h1Int)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:a1h1sd) %>% 
-  pivot_wider(names_from = c(wordType, stats), values_from = "values")
-```
-
-#### Table 13. 
-A2-H1 intensity difference analysis per speaker
-```{r}
-dataWrd %>% 
-  filter (
-    (substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>%
-  group_by (speaker, conditionNorm, wordType) %>%
-  summarise (n = n(),
-             a2h1m = mean (a2h1Int),
-             a2h1sd = sd (a2h1Int)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:a2h1sd) %>% 
-  pivot_wider(names_from = c(wordType, stats), values_from = "values")
-```
-
-#### Table 14. 
-H2-H1 intensity difference analysis per speaker
-```{r}
-dataWrd %>% 
-  filter (
-    (substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>%
-  group_by (speaker, conditionNorm, wordType) %>%
-  summarise (n = n(),
-             h2h1m = mean (h2h1Int),
-             h2h1sd = sd (h2h1Int)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:h2h1sd) %>% 
-  pivot_wider(names_from = c(wordType, stats), values_from = "values")
-```
-
-
-### Apendix 3
-Pulse and intensity profiles
-
-```{r}
-lapply(unique(dataWrd$speaker), function(i){
-if (i == "F45") {
-  # exclude "j_ilˀi_nno" from F45. Glottal stop
-  # exclude "kul_ilo_jd" from F45 - creak on /l/ in the end of a sentence
-  tmp <- data %>% filter (speaker == i &
-                          word != "j_ilˀ^i_nno" & word != "kul_il^o_jd")
-} else{
-  tmp <- data %>% filter (speaker == i)
+for (k in seq(1, length(fnames))){
+  if (k == 1) {
+    data_pulses <- read.table(paste(fnames[k], "_Pulse_data.txt", sep = ""), header = TRUE, sep = "\t", dec = ".", encoding = "UTF-8", quote = "\"")
+    data_sounds <- read.table(paste(fnames[k], "_Sound_data.txt", sep = ""), header = TRUE, sep = "\t", dec = ".", encoding = "UTF-8", quote = "\"")
+  }
+  else {
+    data_pulses_tmp <- read.table(paste(fnames[k], "_Pulse_data.txt", sep = ""), header = TRUE, sep = "\t", dec = ".", encoding = "UTF-8", quote = "\"")
+    data_pulses <- rbind (data_pulses, data_pulses_tmp)    
+    data_sounds_tmp <- read.table(paste(fnames[k], "_Sound_data.txt", sep = ""), header = TRUE, sep = "\t", dec = ".", encoding = "UTF-8", quote = "\"")
+    data_sounds <- rbind (data_sounds, data_sounds_tmp)    
+  }
 }
 
-# convert intervals between pulses to milliseconds
-tmp$plsIntvl <- tmp$plsIntvl * 1000
+rm (data_pulses_tmp)
+rm (data_sounds_tmp)
 
-# plot pulse profiles
-tmp %>%
-  ggplot (aes (x = pointsNorm, y = plsIntvl)) +
-  geom_line (aes(group = conditionWord), alpha = 0.4) +
-  xlab ("sound timing, % of total, laterals are in [0, 1]") +
-  ylab ("pulse interval duration, ms") +
-  geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
-  geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
-  theme (legend.key.width = unit (0.5, "line"),
-         legend.position = "none",
-         axis.text.x = element_text(size = 12),
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_text(size = 12),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12)) +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3), labels = c("-2", "-1", "0", "1", "2", "3")) +
-  scale_color_grey(start = 0.8, end = 0.2) +
-  annotate ("text", x = -0.7, y = 35, label = "/vowel/", size = 4.5) +
-  annotate ("text", x = 0.5, y = 35, label = "/lateral/", size = 4.5) +
-  annotate ("text", x = 2, y = 35, label = "/vowel/", size = 4.5) +
-  facet_grid (~conditionNorm~wordType, scales = "free")+
-  ggtitle(i) ->
-  p1
+# ---- COMBINE AND NORMALIZE THE DATA ----
 
-# plot intensity profiles
- tmp %>%
-  ggplot (aes (x = pointsNorm, y = intensityOrig)) +
-  geom_line (aes(colour = conditionWord)) +
-  xlab ("Sound timing, % of total, laterals are in [0, 1]") +
-  ylab ("Sound intensity,dB") +
-  ylim (40, 85) +
-  geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
-  geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
-  theme (legend.key.width = unit (0.5, "line"),
-         #legend.text = element_text(size = rel(0.75)),
-         #legend.text = element_blank(),
-         #legend.title = element_blank(),
-         legend.position = "none",
-         axis.text.x = element_text(size = 12),
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_text(size = 12),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12)) +
-   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3), labels = c("-2", "-1", "0", "1", "2", "3")) +
-  scale_color_grey(start = 0.8, end = 0.2) +
-  annotate ("text", x = -1, y = 85, label = "/vowel/", size = 4.5) +
-  annotate ("text", x = 0.5, y = 85, label = "/lateral/", size = 4.5) +
-  annotate ("text", x = 2, y = 85, label = "/vowel/", size = 4.5) +
-  facet_wrap (~conditionNorm~wordType, ncol = 2)  +
-  ggtitle(i) ->
-   p2
- 
- return(list(p1, p2))
-})
+# -- re-arrange levels --
+data_sounds$consonant <- factor (data_sounds$consonant, levels = c("l", "lˀ"))
+data_sounds$prodType_norm <- data_sounds$prodType
+data_sounds$prodType_norm [data_sounds$prodType_norm %in% c("1", "2", "3")] <- "Individual words"
+data_sounds$prodType_norm <- factor (data_sounds$prodType_norm, levels = c("Individual words", "Carrier phrase", "Free narrative"))
+
+data_sounds$token_key <- paste (data_sounds$file, data_sounds$token_code, sep = "_")
+data_syllables$token_key <- paste (data_syllables$fname, data_syllables$token_code, sep = "_")
+data_pulses$token_key <- paste (data_pulses$file, data_pulses$token_code, sep = "_")
+
+data_sounds <- inner_join (data_sounds, select (data_syllables, token_key, syllable_type), by = c("token_key"))
+
+data_sounds$statistics_key <-
+  paste (data_sounds$prodType_norm, data_sounds$consonant, sep = ", ")
+
+data_sounds$statistics_key [data_sounds$statistics_key == "Individual words, lˀ"] <- "3Individual words, lˀ"
+data_sounds$statistics_key [data_sounds$statistics_key == "Free narrative, lˀ"] <- "1Free narrative, lˀ"
+data_sounds$statistics_key [data_sounds$statistics_key == "Individual words, l"] <- "4Individual words, l"
+data_sounds$statistics_key [data_sounds$statistics_key == "Free narrative, l"] <- "2Free narrative, l"
+
+
+data_sounds$cons_prodTypekey <- paste (data_sounds$consonant, data_sounds$prodType_norm, sep = ", ")
+data_sounds$cons_prodTypekey <- factor (data_sounds$cons_prodTypekey,
+                                        levels = c("lˀ, Individual words",
+                                                   "l, Individual words",
+                                                   "lˀ, Carrier phrase",
+                                                   "l, Carrier phrase",
+                                                   "lˀ, Free narrative",
+                                                   "l, Free narrative"))
+
+data_sounds$speaker <- factor(data_sounds$speaker,
+                              levels = c("F30", "M35", "M40",
+                                         "F45", "F49", "M50",
+                                         "M52", "M60", "M69",
+                                         "M75"))
+
+summary_data <-
+  data_pulses %>%
+    filter (sound == "l" | sound == "lˀ") %>%
+    select (file, token_key, interval_dur, interval_intensity) %>%
+    group_by (file, token_key) %>%
+    summarise (jitter = sd (interval_dur),
+               maxInterval_dur = max (interval_dur),
+               minInterval_dur = min (interval_dur),
+               shimmer = sd (interval_intensity),
+               maxInt_dB = max (interval_intensity),
+               minInt_dB = min (interval_intensity))
+
+data_sounds <- inner_join (data_sounds, summary_data, by = c("token_key"))
+#data_sounds$int_valley <- data_sounds$maxInt_dB - data_sounds$minInt_dB
+data_sounds$int_valley <- data_sounds$v2_max_int - data_sounds$c_min_int
+data_sounds$minF0 <- 1 / data_sounds$maxInterval_dur
+data_sounds$maxF0 <- 1 / data_sounds$minInterval_dur
+data_sounds$F0dip <- data_sounds$maxF0 - data_sounds$minF0
+
+tmp_pulse_data <-
+  data_pulses %>% select (token_key, interval_middle, interval_dur)
+names(tmp_pulse_data)[names(tmp_pulse_data) == "interval_dur"] <- "maxInterval_dur"
+names(tmp_pulse_data)[names(tmp_pulse_data) == "interval_middle"] <- "maxInterval_middle"
+
+data_sounds <- inner_join (data_sounds, tmp_pulse_data, by = c("token_key","maxInterval_dur"))
+
+# delete duplicates
+data_sounds <- data_sounds[order(data_sounds[,'token_key'], data_sounds[,'maxInterval_dur']),]
+data_sounds <- data_sounds[!duplicated(data_sounds$token_key),]
+
+data_sounds$maxInterval_middle <- data_sounds$maxInterval_middle - data_sounds$Cstart
+data_sounds$maxInterval_middle_norm <- data_sounds$maxInterval_middle / (data_sounds$V2start - data_sounds$Cstart)
+data_sounds$maxInterval_dur_ms <- data_sounds$maxInterval_dur * 1000
+data_sounds$minInterval_dur_ms <- data_sounds$minInterval_dur * 1000
+
+rm (tmp_pulse_data)
+rm (summary_data)
+
+data_sounds$Cdur <- data_sounds$V2start - data_sounds$Cstart
+data_sounds$Cdur_ms <- data_sounds$Cdur * 1000
+
+data_sounds$creakStart_norm <- (data_sounds$creakStart - data_sounds$Cstart) / data_sounds$Cdur
+data_sounds$creakEnd_norm <- (data_sounds$creakEnd - data_sounds$Cstart) / data_sounds$Cdur
+data_sounds$creakStart_norm [data_sounds$creakStart == 0] <- 0
+data_sounds$creakEnd_norm [data_sounds$creakEnd == 0] <- 0
+
+data_sounds$v2 <- gsub ("\\^", "", data_sounds$v2)
+data_sounds$speaker <- factor (data_sounds$speaker, levels = c ("F30", "M35", "M40", "F45",
+                                                                "F49", "M50","M52", "M60",
+                                                                "M69", "M75"))
+
+# estimate tilt
+
+data_sounds$h2_tilt_left <- as.double(data_sounds$h2_left_db) - as.double(data_sounds$f0_left_db)
+data_sounds$a1_tilt_left <- as.double(data_sounds$a1_left_db) - as.double(data_sounds$f0_left_db)
+data_sounds$a2_tilt_left <- as.double(data_sounds$a2_left_db) - as.double(data_sounds$f0_left_db)
+data_sounds$h2_tilt_mid <- as.double(data_sounds$h2_mid_db) - as.double(data_sounds$f0_mid_db)
+data_sounds$a1_tilt_mid <- as.double(data_sounds$a1_mid_db) - as.double(data_sounds$f0_mid_db)
+data_sounds$a2_tilt_mid <- as.double(data_sounds$a2_mid_db) - as.double(data_sounds$f0_mid_db)
+data_sounds$h2_tilt_right <- as.double(data_sounds$h2_right_db) - as.double(data_sounds$f0_right_db)
+data_sounds$a1_tilt_right <- as.double(data_sounds$a1_right_db) - as.double(data_sounds$f0_right_db)
+data_sounds$a2_tilt_right <- as.double(data_sounds$a2_right_db) - as.double(data_sounds$f0_right_db)
+
+# estimate maximum tilt
+
+tmp <- data.frame(data_sounds$h2_tilt_left,
+                  data_sounds$h2_tilt_right,
+                  data_sounds$h2_tilt_mid)
+tmp <- apply (tmp, 1, max)
+data_sounds$h2_tilt_max <- tmp
+
+tmp <- data.frame(data_sounds$a1_tilt_left,
+                  data_sounds$a1_tilt_right,
+                  data_sounds$a1_tilt_mid)
+tmp <- apply (tmp, 1, max)
+data_sounds$a1_tilt_max <- tmp
+
+tmp <- data.frame(data_sounds$a2_tilt_left,
+                  data_sounds$a2_tilt_right,
+                  data_sounds$a2_tilt_mid)
+tmp <- apply (tmp, 1, max)
+data_sounds$a2_tilt_max <- tmp
+
+# add lateral data to the pulse data frame
+
+lateral_data <- data_sounds %>%
+  select (token_key, Cstart, V2start)
+
+data_pulses <- inner_join(data_pulses, lateral_data, by = c("token_key"))
+data_pulses$Cdur <- data_pulses$V2start - data_pulses$Cstart
+data_pulses$interval_middle_norm <- (data_pulses$interval_middle - data_pulses$Cstart) / data_pulses$Cdur
+
+data_pulses <- inner_join(data_pulses,
+                          select (data_sounds, token_key, maxInterval_dur, maxInterval_dur_ms, maxInterval_middle, maxInterval_middle_norm, syllable_type),
+                          by = c("token_key"))
+
+lateral_data <- data_pulses %>%
+  select (speaker, sound, interval_dur) %>%
+  filter (sound == "l") %>%
+  group_by (speaker) %>%
+  summarise (l_interval_dur_mean = mean(interval_dur))
+
+lateral_data$l_interval_dur_mean_ms <- lateral_data$l_interval_dur_mean * 1000
+
+data_pulses <- inner_join(data_pulses, lateral_data, by = c("speaker"))
+data_sounds <- inner_join(data_sounds, lateral_data, by = c("speaker"))
+data_pulses$interval_dur_norm <- data_pulses$interval_dur / data_pulses$l_interval_dur_mean
+
+data_pulses <- inner_join(data_pulses, select(data_sounds, token_key, consonant, prodType_norm), by = "token_key")
+data_pulses$interval_dur_ms <- data_pulses$interval_dur * 1000
+
+rm (lateral_data)
+rm (tmp)
+
+# clear and replace symbols
+
+#data_sounds$word <- gsub ("'", "ʼ", data_sounds$word)
+data_sounds$word <- gsub ("lʼ", "lˀ", data_sounds$word)
+data_sounds$word <- gsub ("l'", "lˀ", data_sounds$word)
+data_sounds$word <- gsub ("t’", "t'", data_sounds$word)
+data_sounds$v1 <- gsub ("\\^", "", data_sounds$v1)
+data_sounds$v2 <- gsub ("\\^", "", data_sounds$v2)
+```
+# Appendix 1. Stimuli list
+
+## Table 1. Stimuli list
+
+```{r Appendix 1, echo = FALSE}
+wordlist <- read_excel("_ Wordlist.xlsx")
+kable(wordlist) %>% kable_styling (latex_options = "scale_down")
 ```
 
-
-
-### Apendix 4
-Model printouts
-
-```{r}
-dataWrd %>% 
-  mutate(snd2 = factor(snd2, levels = c("l", "lˀ"))) ->
-  dataWrd 
-
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"),
-          conditionNorm != "Carrier phrase") %>% 
-  mutate(cond = conditionNorm,
-         speaker = factor(speaker,
-                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                      "M52", "M60", "M69", "M75")),
-         intensity = snd2IntNorm,
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
-  lmer (intensity ~ cond*sound + (1|speaker), data = .) %>% 
-  summary()
-
-dataWrd %>% 
-  mutate(duration = lDur,
-         speaker = factor (speaker,
-                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                      "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ"),
-         cond = conditionNorm,
-         maxPulse = plsMax) %>% 
-  lmer (duration ~ cond * sound + (1|speaker), data = .) %>% 
-  summary()
-
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(cond = conditionNorm,
-         speaker = factor (speaker,
-                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                           "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
-  lmer(a1h1Int ~ cond * sound + (1|speaker), data = .) %>% 
-  summary()
-
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(cond = conditionNorm,
-         speaker = factor (speaker,
-                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                           "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
-  lmer(a2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
-  summary()
-
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(cond = conditionNorm,
-         speaker = factor (speaker,
-                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                           "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
-  lmer(h2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
-  summary()
-
-dataWrd %>% 
-  mutate(duration = lDur,
-         speaker = factor (speaker,
-                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                      "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ"),
-         cond = conditionNorm,
-         maxPulse = plsMax) %>% 
-  lmer (maxPulse ~ cond * sound + (1|speaker), data = .) %>% 
-  summary()
-
-dataWrd %>% 
-  mutate(snd2 = factor(snd2, levels = c("lˀ", "l"))) ->
-  dataWrd 
-```
-
-
-### Apendix 5
-Praat script that extracts:
-
-* **Intensity** For each /Ca/ segment containing a target consonant sound (labeled as /C/) we normalized the average intensity of the segment so as the right vowel (/a/) had intensity value in the range [69.5 dB; 70.5 dB]. To do this we used the Scale intensity function in Praat. We then extracted the intensity of the target lateral sound from this segment.
-* **Duration** As explained above, formant transitions were included into the duration of the lateral; in the absence of transitions, the limits of a lateral were identified by a decrease in intensity.
-* **Formant structure** For each /Ca/ (target consonant and /a/ vowel) segment where the data on harmonics was available, we extracted the lateral’s H1, H2, A1 and A2 frequencies and intensities. The data was extracted from the central segment of a consonant (the middle of the consonant +/- 10 ms).
-* **Pulse profile** We annotated glottal pulses for each target sound and plotted them to investigate the timing of the strongest glottal constriction to distinguish between pre- and post-glottlized
-realizations.
+# Appendix 2. Pulse and intensity profiles
 
 ```{r, echo=FALSE}
-cat(read_lines("data/data_extraction.praat"), sep = "\n")
+# inputs
+speakers <- unique(data_sounds$speaker)
+speakers <- sort(speakers)
 ```
 
-## Code for graphs
-
-### Figure 1
-A spectrogram of the /olˀa/ segment in /rolˀal/ (“clothes”) produced by the speaker F 45 in the first individual utterance of the word. Vertical lines on the waveform correspond to glottal pulses.
-
-```{r, fig.width=9, fig.height=7}
-textgrid_to_df("data/F45_clothes_1_utterance.TextGrid") %>% 
-  filter(tier %in% c(1, 5)) %>% 
-  mutate(content = str_replace(content, "\\^a", "a")) ->
-  tg
-draw_sound("data/F45_clothes_1_utterance.wav",
-           annotation = tg, 
-           from = 0.10304, 
-           to = 0.415985, 
-           spectrum_info = FALSE)
+```{r Fig. 1, echo=FALSE, warning=FALSE}
+for (i in 1:10) {
+  p <-
+  data_pulses %>% filter (speaker == speakers[i]) %>%
+    ggplot () +
+    ggtitle(paste("Fig. ", (i * 2 - 1), ". Pulse profile for the speaker ", speakers[i], sep = "")) +
+    geom_line (aes (x = interval_middle_norm, y = interval_dur_ms, color = token_key)) +
+    geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
+    geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
+    xlab ("Normalized timing of a segment, lateral in 0-1") +
+    ylab ("Interval duration, ms") +
+    theme(legend.position = "None") +
+    annotate ("text", x = -1, y = 50, label = paste ("Speaker ", speakers[i], sep = ""), size = 4) +
+    annotate ("text", x = 0.5, y = 50, label = "/lateral/", size = 4) +
+    facet_wrap (~prodType_norm~consonant, ncol = 2)
+  print(p)
+  
+  p <-
+  data_pulses %>% filter (speaker == speakers[i]) %>%
+    ggplot () +
+    ggtitle(paste("Fig. ", (i * 2), ". Intensity profile for the speaker ", speakers[i], sep = "")) +
+    geom_line (aes (x = interval_middle_norm, y = interval_intensity, color = token_key)) +
+    geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
+    geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
+    xlab ("Normalized timing of a segment, lateral in 0-1") +
+    ylab ("Interval intensity, dB") +
+    ylim (35, 80) +
+    theme(legend.position = "None") +
+    annotate ("text", x = -1, y = 80, label = paste ("Speaker ", speakers[i], sep = ""), size = 4) +
+    annotate ("text", x = 0.5, y = 80, label = "/lateral/", size = 4) +
+    facet_wrap (~prodType_norm~consonant, ncol = 2)
+  print(p)
+}
 ```
 
-### Figure 2
-Pulse profile corresponding to the spectrogram in Fig. 1. Black dots show the timing of each glottal pulse. Red dots always project into the middle of the interval between the two black dots. The red line shows the lengthening of the pulses in response to glottalization. The lower horizontal axis shows original pulse timing within the sound, the upper horizontal axis shows normalized timing, where the lateral is in the interval [0, 1]. Vertical dashed lines delimit sounds of the segment.
+# Appendix 3. Effect plots for F45 and M69 mixed effects models
 
-```{r, fig.width=10}
-data %>% 
-  mutate(conditionNorm  = factor(conditionNorm, levels = c("Individual words", "Carrier phrase", "Free narrative"))) ->
-  data
+Fig. 21. Effect plot for the longest interval between glottal pulses in a lateral
 
-tmp <- subset (data, speaker == "F45" & condition == "1" & word == "r_olˀ^a_l")
+```{r Fig. 21, echo=FALSE, warning=FALSE}
+data_dur_longPulse_statistics <- data_sounds %>% filter (speaker %in% c("F45", "M69") & prodType_norm != "Carrier phrase")
 
-# points is a variable containing middles of intervals between pulses
-# the lateral begins in point 0
-# pointsOrig - middles of intervals with the beginning of the first vowel in point 0.
-# pointsNorm is a variable with normalized middles of intervals between pulses,
-# where the lateral is in [0, 1]
- 
-# move middles of intervals so that the left vowel begins at point 0
-tmp$points <- tmp$points - dataWrd$snd1Bgn[dataWrd$speaker == "F45" & dataWrd$condition == 1 & dataWrd$word == "r_olˀ^a_l"]
-
-# convert to milliseconds
-tmp$points <- tmp$points * 1000
-tmp$plsIntvl <- tmp$plsIntvl * 1000
-tmp$pointsOrig <- tmp$pointsOrig * 1000
-
-# line coordinates
-ln1 <- data.frame (xLine1 = c (tmp$pointsOrig [26], tmp$pointsOrig [27]),
-                   yLine1 <- c (0, 0))
-
-ln2 <- data.frame (xLine2 = rep (mean (ln1$xLine1), 2),
-                   yLine2 = c (0, ln1$xLine1[2] - ln1$xLine1[1]))
-
-ln3 <- data.frame (xLine3 = c((ln1$xLine1[2] + ln1$xLine1[1]) / 2, 0.19 * 1000),
-                   yLine3 = c(ln2$yLine2[2] / 2, 0.014 * 1000))
-
-tmp2 <- subset (dataWrd, speaker == "F45" & condition == "1" & word =="r_olˀ^a_l")
-tmp2$snd1Bgn <- tmp2$snd1Bgn * 1000
-tmp2$snd2Bgn <- tmp2$snd2Bgn * 1000
-tmp2$snd3Bgn <- tmp2$snd3Bgn * 1000
-
-# black dots (pulse timing)
-tmp3 <- data.frame (pointsOrig = c (tmp$pointsOrig, tmp$pointsOrig[nrow(tmp)] + tmp$plsIntvl[nrow(tmp)]))
-tmp3 <-
-  tmp3 %>% filter (tmp3$pointsOrig > 50 & tmp3$pointsOrig < 251)
-tmp3$pointsOrig[nrow(tmp3)] = 249.9
-tmp3$label <- ""
-tmp3$label[17] <- "t[i]"
-tmp3$label[18] <- "t[i+1]"
-
-tmp %>% 
-  ggplot(aes (x = points, y = plsIntvl)) +
-  geom_line (aes(colour = condition)) +
-  geom_point(aes(colour = condition)) +
-  xlab ("VCV segment timing, ms") +
-  ylab ("interval between pulses, ms") +
-  ylim (0, 50) +
-  geom_vline(xintercept = -tmp2$snd1Bgn, linetype = "dashed",
-             size = 0.5) +
-  annotate ("text", x = 70, y = 30, label = "/o/", size = 6) +
-  annotate ("text", x = 150, y = 30, label = "/lˀ/", size = 6) +
-  annotate ("text", x = 235, y = 30, label = "/a/", size = 6) +
-  geom_vline(xintercept = -tmp2$snd1Bgn + tmp2$snd3Bgn, linetype = "dashed",
-             size = 0.5) +
-  theme(legend.title=element_blank(), legend.position = "bottom",
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        axis.title.x = element_text(size = 18),
-        axis.title.y = element_text(size = 18),
-        legend.text = element_text(size = 18)) +
-  geom_point (data = tmp3, aes (x = pointsOrig,
-                               fill = "timing of glottal pulses, ms"), y = 0) +
-  geom_text(data = tmp3, aes (x = pointsOrig-1, label = label), parse = TRUE, size = 6, y = 3)+
-  geom_line (data = ln1, aes(x = xLine1, y = yLine1), size = 0.2) +
-  geom_line (data = ln2, aes(x = xLine2, y = yLine2), arrow = arrow(length=unit(0.2,"cm"), ends="both", type = "closed"), size = 0.2) +
-  geom_line (data = ln3, aes(x = xLine3, y = yLine3), arrow = arrow(length=unit(0.2,"cm"), ends="first", type = "closed"), size = 0.2) +
-  scale_color_hue(labels = c("duration of intervals between pulses, ms")) +
-  scale_fill_discrete(labels = c("glottal pulse timing, ms")) +
-  annotate ("label", x = ln3$xLine3[2] + 2,
-            y = ln3$yLine3[2] + 2,
-            label = "t[i+1] - t[i]", size = 6, parse = TRUE)+
-  scale_x_continuous (limits = c(50, 250), sec.axis = sec_axis ((~. / tmp2$snd3Bgn + tmp2$snd1Bgn / tmp2$snd3Bgn), breaks = c(-0.1, 0, 0.5, 1, 1.1), name = "normalized sound timing, the lateral is in [0, 1]"))
+m <- lmer (maxInterval_dur_ms ~ statistics_key + (1|speaker), data = data_dur_longPulse_statistics)
+plot(allEffects(m))
 ```
 
-### Figure 3
-Pulse profiles for intervocalic laterals produced by speaker F45. The peaks in the beginning of /lˀ/ in individual words show closure due to tongue position in the lateral after a close vowel.
+Fig. 22. Effect plot for normalized intensity of a lateral
 
-```{r}
-data %>% 
-  filter (speaker ==  "F45",
-                 word != "j_ilˀ^i_nno",
-                 word != "kul_il^o_jd") %>% 
-  mutate(plsIntvl = plsIntvl * 1000) %>% 
-  ggplot (aes (x = pointsNorm, y = plsIntvl)) +
-  geom_line (aes(group = conditionWord),  alpha = 0.4) +
-  xlab ("sound timing, % of total, laterals are in [0, 1]") +
-  ylab ("pulse interval duration, ms") +
-  geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
-  geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
-  theme (legend.key.width = unit (0.5, "line"),
-         legend.position = "none",
-         axis.text.x = element_text(size = 12),
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_text(size = 12),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12)) +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3), labels = c("-2", "-1", "0", "1", "2", "3")) +
-  annotate ("text", x = -0.7, y = 35, label = "/vowel/", size = 4.5) +
-  annotate ("text", x = 0.5, y = 35, label = "/lateral/", size = 4.5) +
-  annotate ("text", x = 2, y = 35, label = "/vowel/", size = 4.5) +
-  facet_grid (~conditionNorm~wordType, scales = "free")
+```{r Fig. 22, echo=FALSE, warning=FALSE}
+data_intensity <- data_sounds %>% filter (v2 == "a" & prodType_norm != "Carrier phrase")
+
+data_intensity_statistics <-
+  data_intensity %>% filter (speaker %in% c("F45", "M69") & prodType_norm != "Carrier phrase")
+
+m <- lmer (c_mean_int_norm ~ statistics_key + (1|speaker), data = data_intensity_statistics)
+plot(allEffects(m))
 ```
 
-### Figure 4
-Pulse profiles for intervocalic laterals produced by speaker M69. Note that the y-axes have different scales, the words describing sounds always stay on the same level (35 ms).
+Fig. 23. Effect plot for duration of a lateral
 
-```{r}
-tibble(pointsNorm = rep(c(-0.7, 0.5, 2), each = 6), 
-       plsIntvl = rep(rep(c(175, 90, 35), each = 2), 3),
-       label = rep(c("/vowel/", "/lateral/", "/vowel/"), each = 6),
-       conditionNorm = rep(rep(c("Individual words", "Carrier phrase", "Free narrative"), each = 2), 3),
-       wordType = rep(rep(c("lˀ", "l"), 3), 3)) %>% 
-  mutate(conditionNorm = factor(conditionNorm, levels = c("Individual words", "Carrier phrase", "Free narrative")),
-         wordType = factor(wordType, levels = c("lˀ", "l"))) ->
-  annotations
+```{r Fig. 23, echo=FALSE, warning=FALSE}
+data_dur_longPulse_statistics <- data_sounds %>% filter (speaker %in% c("F45", "M69") & prodType_norm != "Carrier phrase")
 
-data %>% 
-  filter (speaker ==  "M69") %>% 
-  mutate(plsIntvl = plsIntvl * 1000) %>% 
-  ggplot (aes (x = pointsNorm, y = plsIntvl)) +
-  geom_line (aes(group = conditionWord), alpha = 0.4) +
-  xlab ("sound timing, % of total, laterals are in [0, 1]") +
-  ylab ("pulse interval duration, ms") +
-  geom_vline (xintercept = 1, linetype = "dotted", color = "black") +
-  geom_vline (xintercept = 0, linetype = "dotted", color = "black") +
-  theme (legend.key.width = unit (0.5, "line"),
-         legend.position = "none",
-         axis.text.x = element_text(size = 12),
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_text(size = 12),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12)) +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3), labels = c("-2", "-1", "0", "1", "2", "3")) +
-  scale_color_grey(start = 0.8, end = 0.2) +
-  geom_text(data = annotations, aes(label = label), size = 4.5)+
-  #annotate ("text", x = -0.7, y = 35, label = "/vowel/", size = 4.5) +
-  #annotate ("text", x = 0.5, y = 35, label = "/lateral/", size = 4.5) +
-  #annotate ("text", x = 2, y = 35, label = "/vowel/", size = 4.5) +
-  facet_grid (~conditionNorm~wordType, scales = "free")
+m <- lmer (Cdur_ms ~ statistics_key + (1|speaker), data = data_dur_longPulse_statistics)
+plot(allEffects(m))
 ```
 
-### Figure 5
-An example of a “silent” realization of /lˀ/ M69. Within the lateral we can see an area of a flat waveform showing full glottal constriction. The realization is the first individual utterance of /relˀa/ (“hand”).
+Fig. 24. Effect plot for shimmer
 
-```{r, fig.width=9, fig.height=7}
-textgrid_to_df("data/M69_hand_1_utterance.TextGrid") %>% 
-  filter(tier %in% c(1, 5)) ->
-  tg
-draw_sound("data/M69_hand_1_utterance.wav",
-           annotation = tg, 
-           from = 0.1427, 
-           to = 0.674, 
-           spectrum_info = FALSE)
+```{r Fig. 24, echo=FALSE, warning=FALSE}
+data_dur_longPulse_statistics <- data_sounds %>% filter (speaker %in% c("F45", "M69") & prodType_norm != "Carrier phrase")
+
+m <- lmer (shimmer ~ statistics_key + (1|speaker), data = data_dur_longPulse_statistics)
+plot(allEffects(m))
 ```
 
+Fig. 25. Effect plot for H2-H1 tilt (only speaker F45)
+```{r Fig. 25, echo=FALSE, warning=FALSE}
+data_tilt_statistics <-
+  data_sounds %>% filter (speaker == "F45" & prodType_norm != "Carrier phrase" & !is.na(h2_tilt_max )  & v2 == "a")
 
-### Figure 6
-Timing of the longest interval between glottal pulses as a proxy for glottal constriction.
+m <- lm (h2_tilt_max ~ statistics_key, data = data_tilt_statistics)
+plot(allEffects(m))
+```
 
-```{r, fig.height=7, fig.width=10}
-# base line: median interval between pulses for /l/ + 3 * SD
-yBaseLine <- data %>% filter (wordType == "l") %>%
-  select (speaker, plsIntvl) %>%
-  group_by (speaker) %>%
-  summarize (avIntvl = mean (plsIntvl),
-             sdIntvl = sd (plsIntvl))
+Fig. 26. Effect plot for A1-H1 tilt (only speaker F45)
+```{r Fig. 26, echo=FALSE, warning=FALSE}
+data_tilt_statistics <-
+  data_sounds %>% filter (speaker == "F45" & prodType_norm != "Carrier phrase" & !is.na(a1_tilt_max)  & v2 == "a")
 
-yBaseLine <- data.frame (yBaseLine, yIntercept = (yBaseLine$avIntvl + yBaseLine$sdIntvl * 3) * 1000)
+m <- lm (a1_tilt_max ~ statistics_key, data = data_tilt_statistics)
+plot(allEffects(m))
+```
 
+Fig. 27. Effect plot for A2-H1 tilt (only speaker F45)
 
-dataWrd %>% 
-  mutate(plsMax = plsMax * 1000) %>%  # convert to milliseconds
+```{r Fig. 27, echo=FALSE, warning=FALSE}
+data_tilt_statistics <-
+  data_sounds %>% filter (speaker == "F45" & prodType_norm != "Carrier phrase" & !is.na(a2_tilt_max)  & v2 == "a")
+
+m <- lm (a2_tilt_max ~ statistics_key, data = data_tilt_statistics)
+plot(allEffects(m))
+```
+
+## Appendix 4. Analysis of stres
+
+```{r Fig. 28-32, echo=FALSE, warning=FALSE}
+data_intensity <- data_sounds %>% filter (v2 == "a" & prodType_norm != "Carrier phrase")
+data_intensity %>% filter (speaker != "F30") %>%
   ggplot () +
-  geom_point (aes (x = plsMaxPointNorm, y = plsMax, color = conditionNorm), size = 1.5) +
-  scale_color_grey(start = 0, end = 0.7) +
-  geom_vline (xintercept = 0, linetype = "dashed", size = 0.5) +
-  geom_vline (xintercept = 1, linetype = "dashed", size = 0.5) +
-  geom_vline (xintercept = 0.33, linetype = "dotted", size = 0.5) +
-  geom_vline (xintercept = 0.66, linetype = "dotted", size = 0.5) +
-  geom_hline (data = yBaseLine, aes (yintercept = yIntercept), linetype = "dashed", size = 0.4) +
-  ylab ("duration of the longest interval between pulses, ms") +
-  xlab ("normalized sound timing, [0; 1] interval between the vertical lines corresponds to the lateral") +
-  theme(legend.title = element_blank(),
-        axis.text.x = element_text(size = 12),
-        axis.text.y = element_text(size = 12),
-        axis.title.x = element_text(size = 12),
-        axis.title.y = element_text(size = 12),
-        legend.text = element_text(size = 12),
-        strip.text.x = element_text(size = 12),
-        legend.position = "bottom") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 0.33, 0.66, 1, 2, 3), labels = c("-2", "-1", "0", "1/3","2/3", "1", "2", "3")) +
-  ylim (0, 0.22 * 1000) +
-  annotate ("text", x = -1, y = 0.2 * 1000, label = "/vowel/", size = 5) +
-  annotate ("text", x = 0.5, y = 0.2 * 1000, label = "/lateral/", size = 5) +
-  annotate ("text", x = 2, y = 0.2 * 1000, label = "/vowel/", size = 5) +
-  facet_wrap (~speaker, ncol = 2)
+  ggtitle("Fig. 28. Normalized intensity of the lateral vs syllable type") +
+  geom_point(aes (x = cons_prodTypekey, y = c_mean_int_norm, color = syllable_type), position = position_jitter (width = 0.1)) +
+  theme (axis.text.x=element_text(angle=55, hjust=1, size = 12),
+         axis.title.x = element_blank()) +
+  ylab ("Normalized lateral intensity, dB") +
+  facet_wrap (~speaker, nrow = 3)
+
+data_sounds %>% filter (speaker != "F30" & prodType_norm != "Carrier phrase") %>%
+  ggplot () +
+  ggtitle ("Fig. 29. Lateral duration vs syllable type") +
+  geom_point(aes (x = cons_prodTypekey, y = Cdur_ms, color = syllable_type), position = position_jitter (width = 0.1)) +
+  theme (axis.text.x=element_text(angle=55, hjust=1, size = 12),
+         axis.title.x = element_blank()) +
+  ylab ("Sound duration, ms") +
+  facet_wrap (~speaker, nrow = 3)
+
+data_sounds %>% filter (speaker != "F30" & prodType_norm != "Carrier phrase") %>%
+  ggplot () +
+  ggtitle("Fig. 30. Duration of the longest interval between glottal pulses vs syllable type") +
+  geom_point(aes (x = cons_prodTypekey, y = maxInterval_dur_ms, color = syllable_type), position = position_jitter (width = 0.1)) +
+  theme (axis.text.x=element_text(angle=55, hjust=1, size = 12),
+         axis.title.x = element_blank()) +
+  ylab ("Longest interval duration, ms") +
+  facet_wrap (~speaker, nrow = 3)
+
+data_intensity <- data_sounds %>% filter (v2 == "a" & prodType_norm != "Carrier phrase")
+data_intensity %>% filter (!is.na(h2_tilt_max) & speaker != "F30" & prodType_norm != "Carrier phrase") %>%
+  ggplot () +
+  ggtitle ("Fig. 31. H2-H1 spectral tilt vs syllable type") +
+  geom_point(aes (x = cons_prodTypekey, y = h2_tilt_max, color = syllable_type), position = position_jitter (width = 0.1)) +
+  theme (axis.text.x=element_text(angle=55, hjust=1, size = 9),
+         axis.title.x = element_blank()) +
+  ylab ("H2-H1 spectral tilt, dB") +
+  facet_wrap (~speaker, nrow = 3)
+
+data_sounds %>% filter (speaker != "F30" & prodType_norm != "Carrier phrase") %>%
+  ggplot () +
+  ggtitle ("Fig. 32. Shimmer vs syllable type") +
+  geom_point(aes (x = cons_prodTypekey, y = shimmer, color = syllable_type), position = position_jitter (width = 0.1)) +
+  theme (axis.text.x=element_text(angle=55, hjust=1, size = 12),
+         axis.title.x = element_blank()) +
+  ylab ("Shimmer, dB") +
+  facet_wrap (~speaker, nrow = 3)
+
+
 ```
 
-### Figure 7
-Intensities of glottalized and modal laterals compared (only /la/ and /lˀa/ segments).
+## Appendix 5. Creak spread
 
-```{r}
-# only laterals followed by /a/: snd3 == "a*" | snd3 == "^a*"
-# no carrier phrase: too few realizations
- 
-dataWrd %>% 
-  filter((substr(snd3, 1,1) == "a" | substr(snd3, 1,2) == "^a"),
-         condition != "Carrier phrase") %>% 
-  ggplot (aes (x = conditionNorm2, y = snd2IntNorm, color = conditionNorm2)) +
-  geom_point (position = position_jitter(w = 0.2, h = 0)) +
-  geom_boxplot (outlier.alpha = 0) +
-  theme (legend.title = element_blank(),
-         axis.text.x=element_text(angle=55, hjust=1, size = 12),
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_blank(),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12),
-         legend.position = "none") +
-  ylab ("Normalized intensity, dB") +
-  scale_color_grey(start=0.6, end=0.2) +
-  facet_wrap (~speaker, ncol=5)
-```
+```{r Fig. 33, echo=FALSE, warning=FALSE}
+data_creak <- data_sounds %>% filter (creakType != "-") %>%
+  select (token_code, token_key, prodType_norm, speaker,
+          creakStart_norm, creakEnd_norm, maxInterval_dur,
+          maxInterval_middle_norm) %>%
+  pivot_longer (c ("creakStart_norm", "creakEnd_norm"), names_to = "creakPoint", values_to = "creakInterval")
 
-### Figure 8
-An example of a lower-intensity modal realization of /lˀ/ by the speaker M52 in the carrier phrase. The word is /rolˀal/ (“clothes”).
+data_creak$yValue <- 0
+data_creak$yValue [data_creak$prodType_norm == "Individual words"] <- 1
+data_creak$yValue [data_creak$prodType_norm == "Carrier phrase"] <- 2
+data_creak$yValue [data_creak$prodType_norm == "Free narrative"] <- 3
+data_creak$yValue <- data_creak$yValue + data_creak$token_code / 50
 
-```{r, fig.width=9, fig.height=7}
-textgrid_to_df("data/M52_clothes_carrier_phrase.TextGrid") %>% 
-  filter(tier %in% c(1, 5)) %>% 
-  mutate(content = str_replace(content, "\\^a", "a")) ->
-  tg
-draw_sound("data/M52_clothes_carrier_phrase.wav",
-           annotation = tg, 
-           from = 0.120225, 
-           to = 0.392, 
-           spectrum_info = FALSE)
-```
-
-### Table 4
-
-```{r}
-dataWrd %>% 
-  filter(str_detect(snd3, "a"), 
-         str_detect(conditionNorm, "(Individual words)|(Free narrative)")) %>%
-  group_by(conditionNorm, snd2) %>% 
-  summarise(n = n(), 
-            mean = mean(snd2IntNorm), 
-            sd = sd(snd2IntNorm)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
-  pivot_wider(names_from = c(snd2, stats), values_from = "values")
-```
-
-### Figure 9
-```{r}
-dataWrd %>% 
-  mutate(lDur = lDur * 1000) %>%  # convert to milliseconds
-  ggplot (aes (x = conditionNorm2, y = lDur, color = conditionNorm2)) +
-  geom_point (position = position_jitter(w = 0.2, h = 0)) +
-  geom_boxplot (outlier.alpha = 0) +
-  theme (legend.title = element_blank(),
-         axis.text.x=element_text(angle=55, hjust=0.95, size = 12),
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_blank(),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12),
-         legend.position = "none") +
-  ylab ("sound duration, ms") +
-  scale_color_grey(start=0.6, end=0.2) +
-  facet_wrap (~speaker, ncol=5)
-```
-
-### Table 5
-
-```{r}
-dataWrd %>% 
-  mutate(lDur = lDur * 1000) %>%  # convert to milliseconds
-  group_by(conditionNorm, snd2) %>% 
-  summarise(n = n(), 
-            mean = mean(lDur), 
-            sd = sd(lDur)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
-  pivot_wider(names_from = c(snd2, stats), values_from = "values")
-```
-
-### Figure 10. 
-Differences between intensities of A1-H1.
-
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
-          is.na (a1h1Int) == FALSE,
-          conditionNorm != "Carrier phrase",
-          !(speaker == "M69" & conditionNorm == "Individual words"),
-          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
-    ggplot() +
-  geom_point (aes (y = a1h1Int, x = conditionNorm2, color = factor("red", label = "A1-H1")), shape = 21, position = position_jitter(w = 0.2, h = 0)) +
-  geom_boxplot (aes (y = a1h1Int, x = conditionNorm2, color = factor("red", label = "A1-H1")), outlier.alpha = 0) +
-  theme (axis.text.x=element_text(angle=60, hjust=1, size = 12),
-         legend.position = "none",
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_text(size = 12),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12)) +
-  ylab ("Intensity difference, dB") +
-  scale_color_grey(start = 0.5, end = 0.2) +
-  labs (color = "") +
-  xlab ("") +
-  facet_wrap (~speaker)
-```
-
-### Figure 11. 
-Differences between intensities of A2-H1.
-
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
-          is.na (a1h1Int) == FALSE,
-          conditionNorm != "Carrier phrase",
-          !(speaker == "M69" & conditionNorm == "Individual words"),
-          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
+data_creak %>%
   ggplot() +
-  geom_point (aes (y = a2h1Int, x = conditionNorm2, color = factor("green", label = "A2-H1")), shape = 22, position = position_jitter(w = 0.2, h = 0)) +
-  geom_boxplot (aes (y = a2h1Int, x = conditionNorm2, color = factor("green", label = "A2-H1")), outlier.alpha = 0) +
-  theme (axis.text.x=element_text(angle=60, hjust=1, size = 12),
-         legend.position = "none",
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_text(size = 12),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12)) +
-  ylab ("Intensity difference, dB") +
-  scale_color_grey(start = 0.5, end = 0.2) +
-  labs (color = "") +
-  xlab ("") +
+  ggtitle ("Fig. 33. Position of creaky parts within the glottalized laterals") +
+  geom_line (aes (x = creakInterval, y = yValue, color = token_key)) +
+  theme (legend.position = "none") +
+  geom_hline (yintercept = 3, linetype = "dotted", size = 0.5) +
+  geom_hline (yintercept = 2, linetype = "dotted", size = 0.5) +
+  geom_vline (xintercept = 1, linetype = "dotted", size = 0.5) +
+  geom_vline (xintercept = 0, linetype = "dotted", size = 0.5) +
+  xlim (-0.3, 1.5) +
+  xlab ("Position of creak, 0-1 is a lateral") +
+  ylab ("") +
+  annotate ("text", x = 0.5, y = 2.7, label = "/lateral/", size = 3) +
+  annotate ("text", x = 1.2, y = 1.75, label = "Ind. words", size = 3) +
+  annotate ("text", x = 1.2, y = 2.75, label = "Carr. phr", size = 3) +
+  annotate ("text", x = 1.2, y = 3.75, label = "Free narr", size = 3) +
   facet_wrap (~speaker)
 ```
 
-### Figure 12. 
-Differences between intensities of H2-H1.
+Table 2. Creak statistics
 
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
-          is.na (a1h1Int) == FALSE,
-          conditionNorm != "Carrier phrase",
-          !(speaker == "M69" & conditionNorm == "Individual words"),
-          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
-  ggplot() +
-  geom_point (aes (y = h2h1Int, x = conditionNorm2, color = factor("blue", label = "H2-H1")), shape = 22, position = position_jitter(w = 0.2, h = 0)) +
-  geom_boxplot (aes (y = h2h1Int, x = conditionNorm2, color = factor("blue", label = "H2-H1")), outlier.alpha = 0) +
-  theme (axis.text.x=element_text(angle=60, hjust=1, size = 12),
-         legend.position = "none",
-         axis.text.y = element_text(size = 12),
-         axis.title.x = element_text(size = 12),
-         axis.title.y = element_text(size = 12),
-         strip.text.x = element_text(size = 12),
-         strip.text.y = element_text(size = 12)) +
-#  ggtitle ("H2-H1 intensity difference") +
-  ylab ("Intensity difference, dB") +
-  scale_color_grey(start = 0.5, end = 0.2) +
-  labs (color = "") +
-  xlab ("") +
-  facet_wrap (~speaker)
+```{r Table 2, echo=FALSE, warning=FALSE, message=FALSE}
+data_sounds$creakType [data_sounds$creakType == "full stop + creaky"] <- "full stop + creak"
+data_sounds$creakType [data_sounds$creakType == "full stop + creak"] <- "full stop"
+data_sounds$creakType [data_sounds$creakType == "creak"] <- "creaky"
+data_sounds$creakType [data_sounds$creakType == "creak + noisy"] <- "creaky"
+data_sounds$creakType [data_sounds$creakType == "creaky + noisy"] <- "creaky"
+data_sounds$creakType [data_sounds$creakType == "noisy"] <- "no creak"
+data_sounds$creakType [data_sounds$creakType == "-"] <- "no creak"
+
+creakData <-
+  data_sounds %>% select (speaker, prodType_norm, consonant, creakType) %>%
+  group_by (speaker, prodType_norm, consonant, creakType) %>%
+  summarise (n = n())
+creakData <-
+  pivot_wider (creakData, names_from = creakType, values_from = n)
+
+tmp <- data_sounds %>% filter (creakEnd_norm > 1) %>%
+  select (speaker, prodType_norm, consonant) %>%
+  group_by (speaker, prodType_norm, consonant) %>%
+  summarise (n = n())
+creakData <- left_join (creakData, tmp, by = c ("speaker", "prodType_norm", "consonant"))
+names(creakData)[names(creakData) == "n"] <- "right creak spread"
+
+tmp <- data_sounds %>% filter (creakStart_norm < 0) %>%
+  select (speaker, prodType_norm, consonant) %>%
+  group_by (speaker, prodType_norm, consonant) %>%
+  summarise (n = n())
+creakData <- left_join (creakData, tmp, by = c ("speaker", "prodType_norm", "consonant"))
+names(creakData)[names(creakData) == "n"] <- "left creak spread"
+
+rm(tmp)
+
+kable(creakData) %>% kable_styling (latex_options = "scale_down")
 ```
 
-### Table 7. 
-A1-H1 intensity
+## Appendix 6. Spectral tilt dynamics
 
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
-          is.na (a1h1Int) == FALSE,
-          conditionNorm != "Carrier phrase",
-          !(speaker == "M69" & conditionNorm == "Individual words"),
-          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
-  group_by(conditionNorm, snd2) %>% 
-  summarise(n = n(), 
-            mean = mean(a1h1Int), 
-            sd = sd(a1h1Int)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
-  pivot_wider(names_from = c(snd2, stats), values_from = "values")
+```{r Fig. 34-36, echo=FALSE, warning=FALSE, message=FALSE}
+# H2-H1 tilt
+data_h2_tilt <- data_sounds %>% filter (prodType != "Carrier phrase" &
+                                          !is.na(h2_tilt_max) &
+                                          v2 == "a" &
+                                          speaker != "M50" &
+                                          !(speaker == "M69" & prodType_norm == "Individual words")) %>%
+  select (token_key, consonant, prodType_norm, speaker, h2_tilt_left, h2_tilt_mid, h2_tilt_right, left_point, mid_point, right_point, statistics_key) %>%
+  pivot_longer (c ("h2_tilt_left", "h2_tilt_mid", "h2_tilt_right"), names_to = "tiltPosition", values_to = "tiltValue")
+
+
+data_h2_tilt$plotKey <- 0
+data_h2_tilt$plotKey [data_h2_tilt$tiltPosition == "h2_tilt_left"] <- 0.1
+data_h2_tilt$plotKey [data_h2_tilt$tiltPosition == "h2_tilt_right"] <- 0.5
+data_h2_tilt$plotKey [data_h2_tilt$tiltPosition == "h2_tilt_mid"] <- 0.9
+
+data_h2_tilt %>%
+  ggplot () +
+  ggtitle ("Fig. 34. H2-H1 spectral tilt estimated in points 0.1, 0.5 and 0.9 of sound duration") +
+  geom_line(aes (x = plotKey, y = tiltValue, color = token_key), size = 0.05) +
+  geom_smooth(aes (x = plotKey, y = tiltValue), color = "black") +
+  ylab ("H2 intensity less H1 intensity") +
+  theme (legend.position = "none") +
+  facet_wrap (~speaker~statistics_key, ncol = 4)
+
+# A1-H1 tilt
+data_a1_tilt <- data_sounds %>% filter (prodType != "Carrier phrase" &
+                                          !is.na(a1_tilt_max) &
+                                          v2 == "a" &
+                                          speaker != "M50" &
+                                          !(speaker == "M69" & prodType_norm == "Individual words")) %>%
+  select (token_key, consonant, prodType_norm, speaker, a1_tilt_left, a1_tilt_mid, a1_tilt_right, left_point, mid_point, right_point, statistics_key) %>%
+  pivot_longer (c ("a1_tilt_left", "a1_tilt_mid", "a1_tilt_right"), names_to = "tiltPosition", values_to = "tiltValue")
+
+data_a1_tilt$plotKey <- 0
+data_a1_tilt$plotKey [data_a1_tilt$tiltPosition == "a1_tilt_left"] <- 0.1
+data_a1_tilt$plotKey [data_a1_tilt$tiltPosition == "a1_tilt_right"] <- 0.5
+data_a1_tilt$plotKey [data_a1_tilt$tiltPosition == "a1_tilt_mid"] <- 0.9
+
+data_a1_tilt %>%
+  ggplot () +
+  ggtitle ("Fig. 35. A1-H1 spectral tilt estimated in points 0.1, 0.5 and 0.9 of sound duration") +
+  geom_line(aes (x = plotKey, y = tiltValue, color = token_key), size = 0.05) +
+  ylab ("A1 intensity less H1 intensity") +
+  geom_smooth(aes (x = plotKey, y = tiltValue), color = "black") +
+  theme (legend.position = "none") +
+  facet_wrap (~speaker~statistics_key, ncol = 4)
+
+# A2-H1 tilt
+
+data_a2_tilt <- data_sounds %>% filter (prodType != "Carrier phrase"  &
+                                          !is.na(a2_tilt_max) &
+                                          v2 == "a" &
+                                          speaker != "M50" &
+                                          !(speaker == "M69" & prodType_norm == "Individual words")) %>%
+  select (token_key, consonant, prodType_norm, speaker, a2_tilt_left, a2_tilt_mid, a2_tilt_right, left_point, mid_point, right_point, statistics_key) %>%
+  pivot_longer (c ("a2_tilt_left", "a2_tilt_mid", "a2_tilt_right"), names_to = "tiltPosition", values_to = "tiltValue")
+
+data_a2_tilt$plotKey <- 0
+data_a2_tilt$plotKey [data_a2_tilt$tiltPosition == "a2_tilt_left"] <- 0.1
+data_a2_tilt$plotKey [data_a2_tilt$tiltPosition == "a2_tilt_right"] <- 0.5
+data_a2_tilt$plotKey [data_a2_tilt$tiltPosition == "a2_tilt_mid"] <- 0.9
+
+data_a2_tilt %>%
+  ggplot () +
+  ggtitle ("Fig. 36. A2-H1 spectral tilt estimated in points 0.1, 0.5 and 0.9 of sound duration") +
+  geom_line(aes (x = plotKey, y = tiltValue, color = token_key), size = 0.05) +
+  ylab ("A2 intensity less H1 intensity") +
+  geom_smooth(aes (x = plotKey, y = tiltValue), color = "black") +
+  theme (legend.position = "none") +
+  facet_wrap (~speaker~statistics_key)
 ```
 
-### Table 8. 
-A2-H1 intensity
+## Appendix 7. Praat script
 
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
-          is.na (a1h1Int) == FALSE,
-          conditionNorm != "Carrier phrase",
-          !(speaker == "M69" & conditionNorm == "Individual words"),
-          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
-  group_by(conditionNorm, snd2) %>% 
-  summarise(n = n(), 
-            mean = mean(a2h1Int), 
-            sd = sd(a2h1Int)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
-  pivot_wider(names_from = c(snd2, stats), values_from = "values")
 ```
+Script for extracting sound data
 
-### Table 9.
-H2-H1 intensity
+ # the script extracts data for each token of a lateral
 
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"), 
-          is.na (a1h1Int) == FALSE,
-          conditionNorm != "Carrier phrase",
-          !(speaker == "M69" & conditionNorm == "Individual words"),
-          !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(speaker = factor (speaker, levels = c("F45", "F30", "F49", "M52", "M60", "M69", "M35", "M40", "M75"))) %>% 
-  group_by(conditionNorm, snd2) %>% 
-  summarise(n = n(), 
-            mean = mean(h2h1Int), 
-            sd = sd(h2h1Int)) %>% 
-  pivot_longer(names_to = "stats", values_to = "values", n:sd) %>% 
-  pivot_wider(names_from = c(snd2, stats), values_from = "values")
-```
+form Data extracton parameters
+ # sound, word, production type (token), speaker - interval tiers
+ # pulse - point tier
+ comment Number of the sound tier
+ integer sndTier 1
+ comment Number of the word tier
+ integer wrdTier 2
+ comment Number of the production type tier
+ integer prodTypeTier 3
+ comment Number of the speaker tier
+ integer spkTier 6
+ comment Pulse tier
+ integer plsTier 7
+ comment Creak type tier
+ integer creakTier 8
+ comment Path to formant extraction data
+ text formantFile _ Formant_Extraction_Parameters.txt
+ comment Path to save spectrograms
+ text path C:\Users\ashir\Desktop\_l_Spectrograms\
+endform
 
-### Figure 13. 
-Effect plots for laterals’ intensity: condition and sound are independent variables, speaker is a random intercept.
+sound_data_raw = selected ("Sound")
+textGrid_data = selected ("TextGrid")
 
-```{r}
-dataWrd %>% 
-  mutate(snd2 = factor(snd2, levels = c("l", "lˀ"))) ->
-  dataWrd  
+Edit
 
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a"),
-          conditionNorm != "Carrier phrase") %>% 
-  mutate(cond = conditionNorm,
-         speaker = factor(speaker,
-                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                      "M52", "M60", "M69", "M75")),
-         intensity = snd2IntNorm,
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
-  lmer (intensity ~ cond*sound + (1|speaker), data = .) %>% 
-  ggpredict(c("sound", "cond")) %>% 
-  plot()
-```
+ # ---- delete the initial word "Sound " from the file name
+select sound_data_raw
+inpFile$ = selected$ ()
+len = length: inpFile$
+inpFile$ = right$: inpFile$, len - 6
 
+ # ---- make output file names
+outFile$ = inpFile$ + "_Sound_data.txt"
 
-### Figure 14. 
-Effect plots for creak (as proxied by maximal interval between 2 consecutive glottal pulses): condition and sound are independent variables, speaker is a random intercept.
+ # ---- resample the sound
 
-```{r}
-dataWrd %>% 
-  mutate(duration = lDur,
-         speaker = factor (speaker,
-                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                      "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ"),
-         cond = conditionNorm,
-         maxPulse = plsMax) %>% 
-  lmer (maxPulse ~ cond * sound + (1|speaker), data = .) %>% 
-  ggpredict(c("sound", "cond")) %>% 
-  plot()
-```
+select sound_data_raw
+Resample... 16000 50
+sound_data = selected("Sound")
 
-### Figure 15. 
-Effect plots for laterals’ duration: condition and sound are independent variables, speaker is a random intercept.
+ # ---- scaling parameters
 
-```{r}
-dataWrd %>% 
-  mutate(duration = lDur,
-         speaker = factor (speaker,
-                          levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                      "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ"),
-         cond = conditionNorm,
-         maxPulse = plsMax) %>% 
-  lmer (duration ~ cond * sound + (1|speaker), data = .) %>% 
-  ggpredict(c("sound", "cond")) %>% 
-  plot()
-```
+pctRightBase = 10 ; base width of a spectrogram in Praat picture
+pctRightScale = 0.5 ; base duration of a word for scaling, seconds
+pctRight = 0
 
-### Figure 16. 
-Effect plots for intensity difference between the harmonic closest to A1 and H1: condition and sound are independent variables, speaker is a random intercept.
+ # ---- variables
 
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(cond = conditionNorm,
-         speaker = factor (speaker,
-                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                           "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
-  lmer(a1h1Int ~ cond * sound + (1|speaker), data = .) %>% 
-  ggpredict(c("sound", "cond")) %>% 
-  plot()
-```
+fCounter = 0 ; counter for formants
+tokenCounter = 1 ; will be used as a key for the tokens
+spectrogramFlag = 0
+tmpSound = 0
 
 
-### Figure 17. 
-Effect plots for intensity difference between the harmonic closest to A2 and H1: condition and sound are independent variables, speaker is a random intercept.
+select textGrid_data
+nIntervals = Get number of intervals: sndTier ; number of intervals in the sounds tier
 
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(cond = conditionNorm,
-         speaker = factor (speaker,
-                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                           "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
-  lmer(a2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
-  ggpredict(c("sound", "cond")) %>% 
-  plot()
-```
+ # ---- get formant extraction parameters
 
-### Figure 18. 
-Effect plots for intensity difference between H2 and H1: condition and sound are independent variables, speaker is a random intercept.
+str = Read Strings from raw text file... 'formantFile$'
 
-```{r}
-dataWrd %>% 
-  filter ((substr (snd3,1,1) == "a" | substr (snd3,2,2) == "a") &
-      is.na (a1h1Int) == FALSE &
-      conditionNorm != "Carrier phrase" &
-      !(speaker == "M69" & conditionNorm == "Individual words") &
-      !(speaker == "M50" & conditionNorm == "Individual words")) %>% 
-  mutate(cond = conditionNorm,
-         speaker = factor (speaker,
-                               levels = c ("F30", "M35", "M40", "F45", "F49", "M50",
-                                           "M52", "M60", "M69", "M75")),
-         sound = wordType,
-         sound = ifelse(sound == "l", "l", "lˤ")) %>% 
-  lmer(h2h1Int ~ cond * sound + (1|speaker), data = .) %>% 
-  ggpredict(c("sound", "cond")) %>% 
-  plot()
-```
+select str
+strNum = Get number of strings
 
-## Package versions
+fParams$ [1] = "" ; array of formant extraction parameters
 
-```{r}
-packages <- c("rmarkdown", "tidyverse", "phonfieldwork", "lme4", "lmerTest", "ggeffects")
-map_dfr(packages, function(i){
-  tibble(package = i,
-         version = paste(packageVersion(i), sep = "."))
-}) %>% 
-  arrange(package)
+if strNum > 1
+ for i from 1 to strNum
+  fParams$ [i] = Get string: i
+ endfor
+endif
+
+removeObject: str
+
+ # ---- create intensity object 
+
+selectObject: sound_data
+intensity = To Intensity... 100 0
+
+ # ---- make headers
+
+writeFileLine: outFile$, "file", tab$, "token_code", tab$, "speaker", tab$, "word", tab$, "prodType", tab$, "v1", tab$, "v2", tab$, "consonant", tab$,
+                   ..."creakType", tab$, "creakStart", tab$, "creakEnd", tab$, "V1start", tab$, "Cstart", tab$, "V2start", tab$, "V2end", tab$,
+                   ..."v1_max_int", tab$, "c_min_int", tab$, "v2_max_int", tab$,
+                   ..."c_mean_int", tab$, "c_mean_int_norm", tab$,
+                   ..."left_point", tab$, "f0_left_hz", tab$, "f0_left_db", tab$, "h2_left_hz", tab$, "h2_left_db", tab$, "a1_left_hz", tab$, "a1_left_db", tab$, "a2_left_hz", tab$, "a2_left_db", tab$,
+                   ..."mid_point", tab$, "f0_mid_hz", tab$, "f0_mid_db", tab$, "h2_mid_hz", tab$, "h2_mid_db", tab$, "a1_mid_hz", tab$, "a1_mid_db", tab$, "a2_mid_hz", tab$, "a2_mid_db", tab$,
+                   ..."right_point", tab$, "f0_right_hz", tab$, "f0_right_db", tab$, "h2_right_hz", tab$, "h2_right_db", tab$, "a1_right_hz", tab$, "a1_right_db", tab$, "a2_right_hz", tab$, "a2_right_db"
+
+ # ---- the main algorythm
+
+writeInfo: ""
+
+for i from 2 to (nIntervals - 1)
+
+ # -- find sounds in the sound tier
+ selectObject: textGrid_data
+
+ snd1$ = Get label of interval: sndTier, i - 1 ; previous sound
+ snd2$ = Get label of interval: sndTier, i     ; current sound
+ snd3$ = Get label of interval: sndTier, i + 1 ; next sound
+
+ # limits of the previous sound
+ snd1Lft = Get start point: sndTier, i - 1 ; the left point of the interval
+ snd1Rght = Get end point: sndTier, i - 1 ; the right point of the interval
+
+ # limits of the current sound
+ snd2Lft = Get start point: sndTier, i
+ snd2Rght = Get end point: sndTier, i
+
+ # limits of the next sound
+ snd3Lft = Get start point: sndTier, i + 1
+ snd3Rght = Get end point: sndTier, i + 1
+	
+ # -- check that the sounds are in the same word
+ wrdLft = Get interval at time: wrdTier, (snd1Lft + snd2Lft) / 2
+ wrdLft$ = Get label of interval: wrdTier, wrdLft
+ wrdRght = Get interval at time: wrdTier, (snd3Lft + snd3Rght) / 2
+ wrdRght$ = Get label of interval: wrdTier, wrdRght
+
+ # save the spectrogram
+
+ if spectrogramFlag = 1 and wrdRght$ <> wrdLft$
+  Select outer viewport: 0, pctRight, 0, 7
+  fname$ = path$ + inpFile$ + "_" + string$(tokenCounter) + "_" + wrdLft$ + "_" + spk$ + "_" + prodType$ + ".png"
+  Save as 300-dpi PNG file: fname$
+
+  removeObject: tmpTxtGrid
+  removeObject: tmpSound
+
+  spectrogramFlag = 0
+  tmpSound = 0
+ endif
+
+ # -- normalize sound notation
+ if snd2$ = "l'"
+  snd2$ = "lˀ"
+ endif
+
+ # -- check whether the lateral is between 2 sounds and that they all are within one word
+ # -- then extract all the necessary data
+
+ if (snd2$ = "l" or snd2$ = "lˀ") and snd1$ <> "" and snd3$ <> "" and wrdLft$ = wrdRght$ and
+ ...((length (snd1$) = 1 and length (snd3$) = 1) or 
+ ...(left$(snd3$,1) = "^" and length (snd1$) = 1) or
+ ...(left$(snd1$,1) = "^" and length (snd3$) = 1))
+
+  spectrogramFlag = 1
+  wrdBorderLft = Get start point: wrdTier, wrdLft
+  wrdBorderRght = Get end point: wrdTier, wrdLft
+
+  # -- drafting the spectrogram
+
+  # extract the sound and textgrid
+
+  if tmpSound = 0 ; this is the first encounter of V_V
+   select sound_data
+   Extract part: wrdBorderLft, wrdBorderRght, "rectangular", 1, "no"
+   tmpSound = selected("Sound")
+  
+   select textGrid_data
+   Extract part: wrdBorderLft, wrdBorderRght, "no"
+   tmpTxtGrid = selected ("TextGrid")
+
+   nPulses = Get number of points: plsTier
+   z = 1
+   while z <= nPulses
+    t = Get time of point: plsTier, z
+    if (t < snd1Lft - wrdBorderLft) or (t > snd3Rght - wrdBorderRght)
+     Remove point: plsTier, z
+     nPulses = Get number of points: plsTier
+    else
+     z = z + 1
+    endif
+   endwhile
+
+   # remove the data that is not required
+   numberOfTiers = Get number of tiers
+   if numberOfTiers = 9
+     Remove tier... 9
+     Remove tier... 8
+   endif
+   Remove tier... 5
+   Remove tier... 4
+
+   # scaling
+   pctRight = pctRightBase * (wrdBorderRght - wrdBorderLft) / pctRightScale
+
+   # draw the spectrogram
+   select tmpSound
+   plus tmpTxtGrid
+   Edit
+
+   Select outer viewport: 0, pctRight, 4, 7
+   editor: tmpTxtGrid
+    Select: 0, wrdBorderRght - wrdBorderLft
+    Draw visible sound and TextGrid: "yes", "no", "yes", "yes", "yes"
+   endeditor
+
+   Select outer viewport: 0, pctRight, 0, 4
+   editor: tmpTxtGrid
+    Select: 0, wrdBorderRght - wrdBorderLft
+    # parameters: erase first, write name, draw selection times
+    # draw selection hairs, garnish
+    Paint visible spectrogram: "no", "no", "yes", "yes", "yes"
+   endeditor
+  endif
+
+  # -- data extraction
+
+  selectObject: textGrid_data
+
+  prodType = Get interval at time: prodTypeTier, snd2Lft
+  prodType$ = Get label of interval: prodTypeTier, prodType
+  spk = Get interval at time: spkTier, snd2Lft
+  spk$ = Get label of interval: spkTier, spk
+
+  creakType_number = Get number of intervals: creakTier
+  creakType = Get interval at time: creakTier, snd1Lft
+  if creakType_number > 2 and creakType < creakType_number - 1
+   creakType = creakType + 1 ; because we know there cannot be creak in the beginning of the first vowel
+   creakStart = Get start point: creakTier, creakType
+   creakEnd = Get end point: creakTier, creakType
+   creakType$ = Get label of interval: creakTier, creakType
+   if creakStart > snd3Rght or creakType$ = ""
+    creakStart = 0
+    creakEnd = 0
+    creakType$ = "-"
+   endif
+  else
+   # there's only one or two intervals in the tier
+   creakStart = 0
+   creakEnd = 0
+   creakType$ = "-"
+  endif
+
+  appendFile: outFile$, inpFile$, tab$, tokenCounter, tab$, spk$, tab$, wrdLft$, tab$, prodType$, tab$, snd1$, tab$, snd3$, tab$, snd2$, tab$,
+           ...creakType$, tab$, fixed$ (creakStart, 3), tab$, fixed$ (creakEnd, 3), tab$, fixed$ (snd1Lft, 3), tab$, fixed$ (snd2Lft, 3), tab$, fixed$ (snd3Lft, 3), tab$, fixed$ (snd3Rght,3), tab$
+
+  selectObject: intensity
+  snd1IntMax = Get maximum: snd1Lft, snd2Lft, "None"
+  snd2IntMean = Get mean... snd2Lft snd3Lft dB
+  snd2IntMin = Get minimum... snd2Lft snd3Lft None
+  snd3IntMax = Get mean... snd3Lft snd3Rght dB
+
+  # -- extract normalized intensity of the consonants
+
+  snd2IntNorm = 0
+
+  @extract_normalized_intensities: sound_data, snd2Lft, snd2Rght, snd3Rght, 70, snd2IntNorm
+
+  appendFile: outFile$, fixed$ (snd1IntMax, 2), tab$, fixed$ (snd2IntMin, 2), tab$, fixed$ (snd3IntMax, 2), tab$,
+                   ...fixed$ (snd2IntMean, 2), tab$, fixed$ (snd2IntNorm, 2), tab$
+
+  # -- extract formant data
+
+  if fCounter = 0
+   fCounter = 1
+   @split (" ", fParams$ [fCounter])
+   while split.array$[1] <> inpFile$
+    fCounter = fCounter + 1
+    @split (" ", fParams$ [fCounter])
+   endwhile
+   #appendInfoLine: fCounter, tab$, wrdLft$
+  else
+   fCounter = fCounter + 1
+   @split (" ", fParams$ [fCounter])
+   appendInfoLine: fCounter, tab$, wrdLft$
+  endif
+
+  # estimate formant intensities, draw formants
+  for k from 1 to 3
+   tiltPlace$ = split.array$[(k-1)*7+2]
+   a1_lft_hz$ = split.array$[(k-1)*7+3]
+   a1_rght_hz = number (split.array$[(k-1)*7+4])
+   a2_lft_hz = number (split.array$[(k-1)*7+5])
+   a2_rght_hz = number (split.array$[(k-1)*7+6])
+   a3_lft_hz = number (split.array$[(k-1)*7+7])
+   a3_rght_hz = number (split.array$[(k-1)*7+8])
+
+   if tiltPlace$ <> "-" and a1_lft_hz$ <> "-"
+    tiltTime = snd2Lft + (snd2Rght - snd2Lft) * number(tiltPlace$)
+    f0_hz = 0
+    @estimate_f0_hz: sound_data, textGrid_data, plsTier, tiltTime, f0_hz
+    h2_hz = f0_hz * 2
+    a1_hz = 0
+    a2_hz = 0
+    f0_dB = 0
+    h2_dB = 0
+    a1_dB = 0
+    a2_dB = 0
+    if a1_lft_hz$ = "Auto"
+     @extract_formants_no_bands: sound_data, tiltTime, f0_hz
+     f0_hz = extract_formants_no_bands.f0_hz
+     h2_hz = extract_formants_no_bands.h2_hz
+     a1_hz = extract_formants_no_bands.a1_hz
+     a2_hz = extract_formants_no_bands.a2_hz
+     f0_dB = extract_formants_no_bands.f0_dB
+     h2_dB = extract_formants_no_bands.h2_dB
+     a1_dB = extract_formants_no_bands.a1_dB
+     a2_dB = extract_formants_no_bands.a2_dB
+    else
+     @extract_formants_with_bands: sound_data, tiltTime, number(a1_lft_hz$), a1_rght_hz, a2_lft_hz, a2_rght_hz, f0_hz
+     f0_hz = extract_formants_with_bands.f0_hz
+     h2_hz = extract_formants_with_bands.h2_hz
+     a1_hz = extract_formants_with_bands.a1_hz
+     a2_hz = extract_formants_with_bands.a2_hz
+     f0_dB = extract_formants_with_bands.f0_dB
+     h2_dB = extract_formants_with_bands.h2_dB
+     a1_dB = extract_formants_with_bands.a1_dB
+     a2_dB = extract_formants_with_bands.a2_dB
+    endif
+    @draw_formants: f0_hz, h2_hz, a1_hz, a2_hz, (tiltTime - wrdBorderLft)
+    appendFile: outFile$, tiltPlace$, tab$, fixed$ (f0_hz, 2), tab$, fixed$ (f0_dB, 2), tab$, fixed$ (h2_hz, 2), tab$, fixed$ (h2_dB, 2), tab$, fixed$ (a1_hz, 2), tab$, fixed$ (a1_dB, 2), tab$, fixed$ (a2_hz, 2), tab$, fixed$ (a2_dB, 2)
+   else
+    appendFile: outFile$, "-", tab$, "-", tab$, "-", tab$, "-", tab$, "-", tab$, "-", tab$, "-", tab$, "-", tab$, "-"
+   endif
+   if k < 3
+    appendFile: outFile$, tab$
+   endif
+  endfor
+  appendFileLine: outFile$
+  tokenCounter = tokenCounter + 1
+ endif
+endfor
+
+if spectrogramFlag = 1 and wrdRght$ <> wrdLft$
+ Select outer viewport: 0, pctRight, 0, 7
+ fname$ = inpFile$ + "_" + string$(tokenCounter) + "_" + wrdLft + "_" + spk$ + "_" + prodType$ + ".png"
+ Save as 300-dpi PNG file: fname$
+ spectrogramFlag = 0
+# removeObject: tmpTxtGrid
+# removeObject: tmpSound
+endif
+
+removeObject: intensity
+removeObject: sound_data
+
+selectObject: sound_data_raw, textGrid_data
+
+appendInfoLine: "Done!"
+
+# .sep$ - separator, .str$ the string to be separated
+procedure split (.sep$, .str$)
+	.strlen = length (.str$)
+	.sep = index (.str$, .sep$)
+	.seplen = length (.sep$)
+	.length = 1
+	while .sep > 0
+		.part$ = left$ (.str$, .sep - 1)
+		.str$ = right$ (.str$, length (.str$) - .sep - .seplen + 1)
+		.sep = index (.str$, .sep$)
+		.array$ [.length] = .part$
+		.length = .length + 1
+	endwhile
+	.array$ [.length] = .str$
+endproc
+
+procedure extract_normalized_intensities: .sound_data, .snd2Lft, .snd2Rght, .snd3Rght, .norm_dB, snd2IntNorm
+ select .sound_data
+ Extract part: .snd2Lft - 1, .snd3Rght + 1, "rectangular", 1, "yes"
+ .tmpSound = selected ("Sound")
+ .tmpIntensity = To Intensity... 100 0
+ .snd3Int = Get mean... .snd2Rght .snd3Rght dB
+ .snd2Int = Get mean... .snd2Lft .snd2Rght dB
+ .snd2snd3Int = Get mean... .snd2Lft .snd3Rght dB
+ removeObject: .tmpIntensity
+
+ .snd3IntNorm = .norm_dB
+ snd2IntNorm = .snd2Int + (.snd3IntNorm - .snd3Int)
+ .snd2snd3IntNorm = .snd2snd3Int + (.snd3IntNorm - .snd3Int)
+
+ .loopFlag = 1
+ while .loopFlag = 1
+  selectObject: .tmpSound
+  Scale intensity... .snd2snd3IntNorm
+  .tmpIntensity = To Intensity... 100 0
+
+  snd2IntNorm = Get mean... .snd2Lft .snd2Rght dB
+  .snd3IntNorm = Get mean... .snd2Rght .snd3Rght dB
+  if .snd3IntNorm < 69.5
+   .snd2snd3IntNorm = .snd2snd3IntNorm + 1
+  endif
+  if .snd3IntNorm > 70.5
+   .snd2snd3IntNorm = .snd2snd3IntNorm - 1
+  endif
+  if .snd3IntNorm >= 69.5 and .snd3IntNorm <= 70.5
+   .loopFlag = 0
+  endif
+  removeObject: .tmpIntensity
+ endwhile
+ removeObject: .tmpSound
+endproc
+
+procedure estimate_f0_hz: .sound_data, .textGrid_data, .pulseTier, .tiltPlace, f0_hz
+# if pulse interval is greater than 0.02, f0 is undefined
+ select .textGrid_data
+ .pulse_start_id = 1
+ .pulseTime = Get time of point: .pulseTier, .pulse_start_id
+ while .pulseTime < .tiltPlace
+  .pulse_start_id = .pulse_start_id + 1
+  .pulseTime = Get time of point: .pulseTier, .pulse_start_id
+ endwhile
+ .pulseTime_prev = Get time of point: .pulseTier, (.pulse_start_id - 1)
+ if (.pulseTime - .pulseTime_prev) > 0.02
+  f0_hz = undefined
+ else
+  f0_hz = 1 / (.pulseTime - .pulseTime_prev)
+ endif
+endproc
+
+procedure extract_formants_with_bands: .sound_data, .tiltTime, .a1_left_hz, .a1_right_hz, .a2_left_hz, .a2_right_hz, .f0_hz
+ select .sound_data
+ Edit
+ editor: .sound_data
+  Move cursor to: .tiltTime
+  View spectral slice
+ Close
+ .sliceID = selected ("Spectrum")
+ .ltasID = To Ltas (1-to-1)
+
+ if .f0_hz <> undefined
+  .f0_dB = Get maximum: (.f0_hz * 0.9), (.f0_hz * 1.1), "None"
+  .f0_hz = Get frequency of maximum: (.f0_hz * 0.9), (.f0_hz * 1.1), "None"
+
+  .h2_hz = f0_hz * 2
+  .h2_dB = Get maximum: (.h2_hz * 0.9), (.h2_hz * 1.1), "None"
+ else
+  .f0_dB = undefined
+  .h2_hz = undefined
+  .h2_dB = undefined
+ endif
+
+ .a1_dB = Get maximum: .a1_left_hz, .a1_right_hz, "None"
+ .a1_hz = Get frequency of maximum: .a1_left_hz, .a1_right_hz, "None"
+
+ .a2_dB = Get maximum: .a2_left_hz, .a2_right_hz, "None"
+ .a2_hz = Get frequency of maximum: .a2_left_hz, .a2_right_hz, "None"
+
+ removeObject: .sliceID
+ removeObject: .ltasID
+endproc
+
+procedure extract_formants_no_bands: .sound_data, .tiltTime, .f0_hz
+ select .sound_data
+ Edit
+ editor: .sound_data
+  Move cursor to: .tiltTime
+  View spectral slice
+ Close
+ .sliceID = selected ("Spectrum")
+ .ltasID = To Ltas (1-to-1)
+
+ select .sound_data
+ Edit
+ editor: .sound_data
+  Select: (.tiltTime - 0.1), (.tiltTime + 0.1)
+  Extract selected sound (preserve times)
+ Close
+ .tmpSoundID = selected ("Sound")
+ .formantID = To Formant (burg)... 0.0025 5 5900 0.025 50
+ .a1_hz = Get quantile: 1, (.tiltTime - 0.05), (.tiltTime + 0.05), "Hertz", 0.5
+ .a2_hz = Get quantile: 2, (.tiltTime - 0.05), (.tiltTime + 0.05), "Hertz", 0.5
+
+ select .ltasID 
+
+ if .f0_hz = undefined
+  .f0_dB = undefined
+  .h2_hz = undefined
+  .h2_dB = undefined
+ else
+  .f0_dB = Get maximum: (.f0_hz * 0.9), (.f0_hz * 1.1), "None"
+  .f0_hz = Get frequency of maximum: (.f0_hz * 0.9), (.f0_hz * 1.1), "None"
+
+  .h2_hz = .f0_hz * 2
+  .h2_dB = Get maximum: (.h2_hz * 0.9), (.h2_hz * 1.1), "None"
+ endif
+
+ if .a1_hz = undefined
+  .a1_dB = undefined
+ else
+  .a1_dB = Get maximum: (.a1_hz * 0.9), (.a1_hz * 1.1), "None"
+  .a1_hz = Get frequency of maximum: (.a1_hz * 0.9), (.a1_hz * 1.1), "None"
+ endif
+
+ if .a2_hz = undefined
+  .a2_dB = undefined
+ else
+  .a2_dB = Get maximum: (.a2_hz * 0.9), (.a2_hz * 1.1), "None"
+  .a2_hz = Get frequency of maximum: (.a2_hz * 0.9), (.a2_hz * 1.1), "None"
+ endif
+
+ removeObject: .tmpSoundID
+ removeObject: .sliceID
+ removeObject: .ltasID
+ removeObject: .formantID
+endproc
+
+procedure draw_formants: .f0_hz, .h2_hz, .a1_hz, .a2_hz, .place
+ if .a1_hz <> undefined   
+  One mark left: .a1_hz, "yes", "yes", "yes", ""
+  Paint circle: "red", .place, .a1_hz, 0.002
+ endif
+ if .a2_hz <> undefined   
+  One mark left: .a2_hz, "yes", "yes", "yes", ""
+  Paint circle: "red", .place, .a2_hz, 0.002
+ endif
+endproc
 ```
