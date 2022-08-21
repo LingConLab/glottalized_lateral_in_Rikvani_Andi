@@ -1,4 +1,4 @@
-Suplementary Material for 'Glottalized lateral in Rikvani Andi: an acoustic study'
+## Suplementary Material for 'Glottalized lateral in Rikvani Andi: an acoustic study'
 
 To access audio recordings and praat annotations used in the study, please contact the authors: Alexander Shiryaev (ashiryaev87@gmail.com), Michael Daniel (misha.daniel@gmail.com) and George Moroz (agricolamz@gmail.com).
 
